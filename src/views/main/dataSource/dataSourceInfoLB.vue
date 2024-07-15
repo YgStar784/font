@@ -124,7 +124,7 @@
             </el-tab-pane>
         </el-tabs>
     </el-card>
-    <uploadDialog v-model="dialogVisible" :dialogValue="dialogValue" v-if="dialogVisible" />
+    <uploadDialog v-model="dialogVisible" :taskType="taskType" :dialogValue="dialogValue" v-if="dialogVisible" />
 </template>
 
 <script setup>
@@ -134,10 +134,12 @@ const activeName = ref('myUpload')
 import MyAuthorized from './components/myAuthorized.vue' */
 import { ElMessage, ElMessageBox } from 'element-plus'
 import uploadDialog from './components/dataSourceUploadDialog.vue'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
 
 import { ref, onMounted } from 'vue'
 import { options } from './options'
-import { getMyDataSourceAPI, getOthersDataSourceAPI } from '@/apis/dataSource'
+import { getMyFlDataSourceAPI, getOthersFlDataSourceAPI } from '@/apis/dataSource'
 import { delMyDataSourceAPI } from '@/apisLittle/dataSource'
 import { Search, User, Delete } from '@element-plus/icons-vue'
 import { littleUrl } from '@/views/Login/littleUrlSet';
@@ -145,6 +147,10 @@ const dialogVisible = ref(false)
 const myTableData = ref([])
 const name = ref('')
 const Uuid = ref('')
+const taskType = ref('')
+const router = useRouter()
+const dialogValue = ref(null)
+
 const mytotal = ref(0)
 const otherstotal = ref(0)
 const othersTableData = ref([])
@@ -164,7 +170,7 @@ const type = ref([
     'Oracle'
 ])
 const getMyDataSource = async () => {
-    const res = await getMyDataSourceAPI(queryForm.value)
+    const res = await getMyFlDataSourceAPI(queryForm.value)
     console.log(res)
     if (res.code === 1000) {
         myTableData.value = res.data.dataSourceList
@@ -216,24 +222,27 @@ const delMyDataSource = (info) => {
     )
         .then(async () => {
             del_form.value.dataSourceUuid = info.dataSourceUuid
-            const res = await delMyDataSourceAPI(del_form.value)
-
-            if (res.code === 1000) {
-                ElMessage({
-                    type: 'success',
-                    message: '删除成功',
-                }
-
-                )
-                getMyDataSource()
-            } else {
-                ElMessage({
-                    type: 'danger',
-                    message: '删除失败',
-                }
-
-                )
-            }
+            axios.post('https://' + localStorage.getItem('nodeIp') + ':' + localStorage.getItem('nodePort')
+                + '/api' + taskType.value + '/delMyDataSource', del_form.value
+                , {
+                    headers: {
+                        Authorization: localStorage.getItem('token'),
+                    }
+                }).then(res => {
+                    console.log(res)
+                    if (res.data.code === 1000) {
+                        ElMessage({
+                            type: 'success',
+                            message: '删除成功',
+                        })
+                        getMyDataSource()
+                    } else {
+                        ElMessage({
+                            type: 'error',
+                            message: res.message,
+                        })
+                    }
+                })
         })
         .catch(() => {
             ElMessage({
@@ -246,17 +255,23 @@ const dialogValueJug = () => {
     console.log(router.currentRoute.value.fullPath);
     if (router.currentRoute.value.fullPath = '/datasourceinfoAQ') {
         dialogValue.value = '数据源导入-安全多方计算'
+        taskType.value = '/MPC'
     } else if (router.currentRoute.value.fullPath = '/datasourceinfoLB') {
         dialogValue.value = '数据源导入-联邦学习'
+        taskType.value = '/FL'
+
     } else if (router.currentRoute.value.fullPath = '/datasourceinfoNZ') {
         dialogValue.value = '数据源导入-匿踪查询'
+        taskType.value = '/PIR'
+
     } else {
         dialogValue.value = '数据源导入-隐私求交'
+        taskType.value = '/PSI'
 
     }
 }
 const getOthersDataSource = async () => {
-    const res = await getOthersDataSourceAPI(queryForm.value)
+    const res = await getOthersFlDataSourceAPI(queryForm.value)
     if (res.code === 1000) {
         othersTableData.value = res.data.dataSourceList
         otherstotal.value = res.data.total
@@ -268,7 +283,10 @@ const getOthersDataSource = async () => {
     }
 }
 
-onMounted(() => getMyDataSource())
+onMounted(() => {
+    getMyDataSource()
+    dialogValueJug()
+})
 onMounted(() => getOthersDataSource())
 
 </script>

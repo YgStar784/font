@@ -88,7 +88,7 @@ import axios from 'axios'
 
 import { ref } from 'vue'
 import { getUsersAPI, getlUserIpAPI } from '@/apis/users';
-import { getDataSourceAPI } from '@/apis/dataSource'
+import { getPirDataSourceAPI } from '@/apis/dataSource'
 import { getUserSourceAPI } from '@/apis/dataSource'
 import { compileScript } from 'vue/compiler-sfc';
 import { nowDate } from '../date'
@@ -205,7 +205,7 @@ const handleDataSourceSelectChange = (value) => {
 const getDataSource = async () => {
     queryFormDataSource.value.queryName = dataSourceName.value
     console.log(queryFormDataSource.value.queryName)
-    const res = await getDataSourceAPI(queryFormDataSource.value)
+    const res = await getPirDataSourceAPI(queryFormDataSource.value)
     if (res.code === 1000) {
         const str_column = res.data.dataSourceList[0].fieldName
         column_options.value = str_column.split(',')
@@ -328,7 +328,7 @@ const onSubmit = async () => {
     console.log(sendForm.value)
 
     axios.post('https://' + localStorage.getItem('nodeIp') + ':' + localStorage.getItem('nodePort')
-        + '/api' + '/createTaskPIR', sendForm.value
+        + '/api' + '/PIR' + '/createTask', sendForm.value
         , {
             headers: {
                 Authorization: localStorage.getItem('token'),

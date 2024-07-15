@@ -92,6 +92,11 @@ const props = defineProps({
         default: '',
         required: true
     },
+    taskType: {
+        type: String,
+        default: '',
+        required: true
+    }
 
 })
 
@@ -110,6 +115,7 @@ const form = ref({
     type: 0,
     dataSourceDescription: '',
 })
+
 console.log(props.dialogValue)
 const handleClose = () => {
     emits('update:modelValue', false)
@@ -123,7 +129,7 @@ const onSubmit = async () => {
         form.value.orcl = 'orcl'
     }
     axios.post('https://' + localStorage.getItem('nodeIp') + ':' + localStorage.getItem('nodePort')
-        + '/api' + '/uploadDataSource', form.value
+        + '/api' + props.taskType + '/uploadDataSource', form.value
         , {
             headers: {
                 Authorization: localStorage.getItem('token'),

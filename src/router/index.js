@@ -13,10 +13,11 @@ import TaskInfo from '../views/main/userMan/taskInfo.vue'
 import FileUpload from '../views/main/tasks/fileUpload.vue'
 import StealthQueryAdd from '../views/main/tasks/stealth/stealthAdd.vue'
 import FederatedLearning from '../views/main/tasks/federatedLearning/index.vue'
-import SecureMultipartyComputation from '../views/main/tasks/secureMultipartyComputation/index.vue'
+import SecureMultipartyComputation from '../views/main/tasks/secureMultipartyComputation/index_befor.vue'
 import PrivateSetIntersection from '../views/main/tasks/privateSetIntersection/index.vue'
 import StealthQuery from '../views/main/tasks/stealth/index.vue'
-import MPC from '../views/main/tasks/secureMultipartyComputation/mpc.vue'
+
+import MPC from '../views/main/tasks/secureMultipartyComputation/index.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [

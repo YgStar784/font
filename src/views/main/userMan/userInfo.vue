@@ -20,6 +20,7 @@
     </el-card>
 </template>
 <script setup>
+const load = ref(true)
 import { useUserStore } from '@/stores/user';
 import { ElSelect } from 'element-plus';
 import { onMounted, ref } from 'vue'
@@ -46,3 +47,9 @@ const getUserInfo = async () => {
 onMounted(() => getUserInfo())
 
 </script>
+
+<style lang="scss" scoped>
+body {
+    margin: 0;
+}
+</style>

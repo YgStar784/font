@@ -2,14 +2,14 @@ import request from './requestLittle'
 export const uploadDataSourceAPI = (data) => {
 
     return request({
-        url: '/uploadDataSource',
+        url: '/PIR/uploadDataSource',
         method: 'POST',
         data
     })
 }
 export const delMyDataSourceAPI = (data) => {
     return request({
-        url: '/delMyDataSource',
+        url: '/PIR/delMyDataSource',
         method: 'POST',
         data
     })

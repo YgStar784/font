@@ -108,7 +108,7 @@
 import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getUsersAPI, getlUserIpAPI } from '@/apis/users';
-import { getDataSourceAPI } from '@/apis/dataSource'
+import { getFlDataSourceAPI } from '@/apis/dataSource'
 const currentSteps = ref(0)
 const id = ref(0)
 const usertotal = ref(0)
@@ -344,7 +344,7 @@ const getUserDataSource = async (index) => {
 
     queryFormDataSource.value.targetUserId = form.value.nodeList[index].nodeUUid
     console.log(queryFormDataSource.value.targetUserId)
-    const res = await getDataSourceAPI(queryFormDataSource.value)
+    const res = await getFlDataSourceAPI(queryFormDataSource.value)
     if (res.code === 1000) {
         form.value.nodeList[index].dataSource_options = []
         form.value.nodeList[index].dataSource_options = res.data.dataSourceList
@@ -359,7 +359,7 @@ const getDataSource = async (index) => {
     console.log(index)
     queryFormDataSource.value.queryName = dataSourceName.value
     console.log(queryFormDataSource.value.queryName)
-    const res = await getDataSourceAPI(queryFormDataSource.value)
+    const res = await getFlDataSourceAPI(queryFormDataSource.value)
     if (res.code === 1000) {
         form.value.nodeList[index].column_options = []
         const str_column = res.data.dataSourceList[0].fieldName

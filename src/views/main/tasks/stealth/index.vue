@@ -1,12 +1,14 @@
 <template>
     <el-card>
-        <el-row :gutter="20" class="header">
-            <el-col :span="7">
-                <h3>
-                    匿踪查询
-                </h3>
-            </el-col>
-        </el-row>
+        <template #header>
+            <div class="card-header">
+                <span>
+                    <h2>
+                        匿踪查询
+                    </h2>
+                </span>
+            </div>
+        </template>
         <el-row :gutter="20" class="header">
             <el-col :span="7">
                 <el-input placeholder="请输入搜索的任务名称" clearable v-model="queryForm.queryName"></el-input></el-col>
@@ -74,7 +76,7 @@ import { ElMessage } from 'element-plus'
 import { onMounted, ref } from 'vue'
 import { Search, Edit, Setting, Delete } from '@element-plus/icons-vue'
 import { getUsersAPI } from '@/apis/users';
-import { taskOptions } from './taskOptions'
+import { taskOptions } from '../taskOptions'
 import { changeStateAPI } from '@/apis/users'
 import { isNULL } from '@/utils/filters'
 import { ElMessageBox } from 'element-plus'
@@ -110,7 +112,7 @@ const handleDialogValue = (row) => {
 const getMyTask = async () => {
 
     axios.post('https://' + localStorage.getItem('nodeIp') + ':' + localStorage.getItem('nodePort')
-        + '/api' + '/getMyTask', queryForm.value
+        + '/api' + '/PIR' + '/getMyTask', queryForm.value
         , {
             headers: {
                 Authorization: localStorage.getItem('token'),
@@ -187,7 +189,7 @@ const handleDownLoad = async (row) => {
         .then(async () => {
             //const res = await downloadResultByUuidAPI({ taskUuid: row.taskUuid })
             axios.post('https://' + localStorage.getItem('nodeIp') + ':' + localStorage.getItem('nodePort')
-                + '/api' + '/downloadResultByUuid', { taskUuid: row.taskUuid }
+                + '/api' + 'PIR' + '/downloadResultByUuid', { taskUuid: row.taskUuid }
                 , {
                     headers: {
                         Authorization: localStorage.getItem('token'),
