@@ -25,7 +25,7 @@
                     <div class="search">
                         <el-row :gutter="20" class="header2" type="flex" justify="end">
                             <el-col :span="2">
-                                <el-button class="addbut" icon="plus" type="primary">
+                                <el-button class="addbut" icon="plus" type="primary" @click="handleDialog">
                                 </el-button>
 
 
@@ -118,7 +118,8 @@
             </el-tab-pane>
         </el-tabs>
     </el-card>
-    <uploadDialog v-model="dialogVisible" :taskType="taskType" :dialogValue="dialogValue" v-if="dialogVisible" />
+    <uploadDialog v-model="dialogVisible" :taskType="taskType" :dialogValue="dialogValue"
+        @initdataSource="getMyDataSource" v-if="dialogVisible" />
 </template>
 
 <script setup>
@@ -163,6 +164,9 @@ const type = ref([
     '达梦数据库',
     'Oracle'
 ])
+const handleDialog = () => {
+    dialogVisible.value = true
+}
 const getMyDataSource = async () => {
     const res = await getMyPirDataSourceAPI(queryForm.value)
     console.log(res)
@@ -199,14 +203,14 @@ const handleCurrentChange = (pageNum) => {
 }
 const dialogValueJug = () => {
     console.log(router.currentRoute.value.fullPath);
-    if (router.currentRoute.value.fullPath = '/datasourceinfoAQ') {
+    if (router.currentRoute.value.fullPath == '/datasourceinfoAQ') {
         dialogValue.value = '数据源导入-安全多方计算'
         taskType.value = '/MPC'
-    } else if (router.currentRoute.value.fullPath = '/datasourceinfoLB') {
+    } else if (router.currentRoute.value.fullPath == '/datasourceinfoLB') {
         dialogValue.value = '数据源导入-联邦学习'
         taskType.value = '/FL'
 
-    } else if (router.currentRoute.value.fullPath = '/datasourceinfoNZ') {
+    } else if (router.currentRoute.value.fullPath == '/datasourceinfoNZ') {
         dialogValue.value = '数据源导入-匿踪查询'
         taskType.value = '/PIR'
 
@@ -289,7 +293,7 @@ onMounted(() => getOthersDataSource())
 .addbut {
     display: flex;
     border-radius: 10px;
-    margin-left: 35px;
+    margin-right: 35px;
     background-color: #409EFF;
 }
 

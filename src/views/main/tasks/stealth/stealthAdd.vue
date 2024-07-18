@@ -20,18 +20,7 @@
                     <el-input placeholder="请输入匿踪查询名称" v-model="form.task_name" />
                 </el-form-item> -->
                 <el-form-item label="节点名称" prop="query_id">
-                    <el-select v-model="form.query_id" placeholder="请选择节点名称" @click="getNodeInfo"
-                        @change="handleUserSelectChange">
-                        <el-option v-for="item in node_options" :key="item.id"
-                            :label='`${item.username}:${item.nodeIp}:${item.nodePort}`' :value="item.id">
-                        </el-option>
-                        <div class="pagination-container">
-                            <el-pagination v-model:current-page="queryFormUser.page"
-                                v-model:page-size="queryFormUser.pageSize" :small="small" :disabled="disabled"
-                                :background="background" layout="prev, pager, next" :total="total"
-                                @size-change="handleSizeChange" @current-change="handleCurrentChange" />
-                        </div>
-                    </el-select>
+
                 </el-form-item>
                 <el-form-item label="节点端口:" prop="ip_port">
                     <el-input placeholder="请输入端口号" v-model="form.ip_port" />

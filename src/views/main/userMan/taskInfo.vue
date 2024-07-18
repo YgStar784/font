@@ -1,251 +1,73 @@
 <template>
     <!-- 匿踪查询 -->
-    <div>
+    <div class="header header-PIR">
         <el-row align="middle" class="grid-content">
             <el-col :span="24">
-
-                匿踪查询
+                <h3 class="title">匿踪查询</h3>
             </el-col>
         </el-row>
-        <div>
-            <el-row>
-                <el-col :span="1">
-                    <div style="padding-top: 5px;">
-                        <el-text style="padding-left: 20px;">端口:
-
-                        </el-text>
-                    </div>
-                </el-col>
-                <el-col :span="1">
-                    <el-input v-model="port" disabled />
-
-                </el-col>
-                <el-col :span="4">
-
-                </el-col>
-                <el-col :span="2">
-                    <div style="padding-top: 5px;">
-                        <el-text type="primary" style="padding-left: 20px">已发布: {{ total }}
-                        </el-text>
-                    </div>
-                </el-col>
-                <!--                 <el-col :span="2">
-                    <div style="padding-top: 5px;">
-                        <el-text type="success" style="padding-left: 20px">成功:
-                        </el-text>
-                    </div>
-                </el-col>
-                <el-col :span="2">
-                </el-col>
-                <el-col :span="1" />
-                <el-col :span="2">
-                    <div style="padding-top: 5px;">
-                        <el-text type="danger" style="padding-left: 20px">失败:
-
-                        </el-text>
-                    </div>
-                </el-col>
-                <el-col :span="3" />
-
-                <el-col :span="3">
-                    <div style="padding-top: 5px;">
-                        <el-text type="warning" style="padding-left: 20px">进行中:
-
-                        </el-text>
-                    </div>
-
-
-                </el-col> -->
-            </el-row>
+        <div class="info clearfix">
+            <div class="port leftfix">
+                <span>端口: </span>
+                <span class="number">8000</span>
+            </div>
+            <div class="datasource leftfix">
+                <span>数据源: </span>
+                <a href="#">3</a>
+            </div>
+            <div class="task leftfix">
+                <span>任务: </span>
+                <a href="#">4</a>
+            </div>
         </div>
     </div>
-    <el-row />
-    <el-row />
     <!-- 安全多方计算 -->
-
-    <div>
+    <div class="header header-MPC">
         <el-row align="middle" class="grid-content">
             <el-col :span="24">
-
-                安全多方计算
+                <h3 class="title">安全多方计算</h3>
             </el-col>
         </el-row>
-        <div>
-            <el-row>
-                <el-col :span="1">
-                    <div style="padding-top: 5px;">
-                        <el-text style="padding-left: 20px;">端口:
-
-                        </el-text>
-                    </div>
-                </el-col>
-
-                <el-col :span="1">
-                    <el-input v-model="port" disabled />
-
-                </el-col>
-                <el-col :span="4" />
-                <el-col :span="2">
-                    <div style="padding-top: 5px;">
-                        <el-text type="primary" style="padding-left: 20px">已发布:
-
-                        </el-text>
-                    </div>
-                </el-col>
-
-                <!--  <el-col :span="2">
-                    <div style="padding-top: 5px;">
-                        <el-text type="success" style="padding-left: 20px">成功:
-
-                        </el-text>
-                    </div>
-                </el-col>
-                <el-col :span="3" />
-                <el-col :span="2">
-                    <div style="padding-top: 5px;">
-                        <el-text type="danger" style="padding-left: 20px">失败:
-
-                        </el-text>
-                    </div>
-                </el-col>
-                <el-col :span="3" />
-
-                <el-col :span="3">
-                    <div style="padding-top: 5px;">
-                        <el-text type="warning" style="padding-left: 20px">进行中:
-
-                        </el-text>
-                    </div>
-                    <el-col :span="2" />
-
-                </el-col> -->
-            </el-row>
+        <div class="info clearfix">
+            <div class="port leftfix">
+                <span>端口:</span>
+                <input type="text" class="but" disabled>
+            </div>
+            <div class="datasource leftfix">数据源:</div>
+            <div class="task leftfix">任务:</div>
         </div>
     </div>
-    <el-row />
-    <el-row />
     <!-- 联邦学习 -->
-
-    <div>
+    <div class="header header-FL">
         <el-row align="middle" class="grid-content">
             <el-col :span="24">
-
-                联邦学习
+                <h3 class="title">联邦学习</h3>
             </el-col>
         </el-row>
-        <div>
-            <el-row>
-                <el-col :span="1">
-                    <div style="padding-top: 5px;">
-                        <el-text style="padding-left: 20px;">端口:
-
-                        </el-text>
-                    </div>
-                </el-col>
-                <el-col :span="1">
-                    <el-input v-model="port" disabled />
-
-                </el-col>
-                <el-col :span="4">
-
-                </el-col>
-                <el-col :span="2">
-                    <div style="padding-top: 5px;">
-                        <el-text type="primary" style="padding-left: 20px">已发布:
-
-                        </el-text>
-                    </div>
-                </el-col>
-                <!--               <el-col :span="2">
-                    <div style="padding-top: 5px;">
-                        <el-text type="success" style="padding-left: 20px">成功:
-
-                        </el-text>
-                    </div>
-                </el-col>
-                <el-col :span="3" />
-                <el-col :span="2">
-                    <div style="padding-top: 5px;">
-                        <el-text type="danger" style="padding-left: 20px">失败:
-
-                        </el-text>
-                    </div>
-                </el-col>
-                <el-col :span="3" />
-
-                <el-col :span="3">
-                    <div style="padding-top: 5px;">
-                        <el-text type="warning" style="padding-left: 20px">进行中:
-
-                        </el-text>
-                    </div>
-                    <el-col :span="2" />
-
-                </el-col> -->
-            </el-row>
+        <div class="info clearfix">
+            <div class="port leftfix"> <span>端口:</span>
+                <input type="text" class="but" disabled>
+            </div>
+            <div class="datasource leftfix">数据源:</div>
+            <div class="task leftfix">
+                <span>任务: </span>
+                <a href="#"></a>
+            </div>
         </div>
     </div>
-    <el-row />
-    <el-row />
     <!-- 隐私求交 -->
-
-    <div>
+    <div class="header header-PSI">
         <el-row align="middle" class="grid-content">
             <el-col :span="24">
-
-                隐私求交
+                <h3 class="title">隐私求交</h3>
             </el-col>
         </el-row>
-        <div>
-            <el-row>
-                <el-col :span="1">
-                    <div style="padding-top: 5px;">
-                        <el-text style="padding-left: 20px;">端口:
-
-                        </el-text>
-                    </div>
-                </el-col>
-                <el-col :span="1">
-                    <el-input v-model="port" disabled />
-
-                </el-col>
-                <el-col :span="4">
-
-                </el-col>
-                <el-col :span="2">
-                    <div style="padding-top: 5px;">
-                        <el-text type="primary" style="padding-left: 20px">已发布:
-
-                        </el-text>
-                    </div>
-                </el-col>
-                <!--   <el-col :span="2">
-                    <div style="padding-top: 5px;">
-                        <el-text type="success" style="padding-left: 20px">成功:
-
-                        </el-text>
-                    </div>
-                </el-col>
-                <el-col :span="3" />
-                <el-col :span="2">
-                    <div style="padding-top: 5px;">
-                        <el-text type="danger" style="padding-left: 20px">失败:
-
-                        </el-text>
-                    </div>
-                </el-col>
-                <el-col :span="3" />
-
-                <el-col :span="3">
-                    <div style="padding-top: 5px;">
-                        <el-text type="warning" style="padding-left: 20px">进行中:
-
-                        </el-text>
-                    </div>
-                    <el-col :span="2" />
-
-                </el-col> -->
-            </el-row>
+        <div class="info clearfix">
+            <div class="port leftfix"> <span>端口:</span>
+                <input type="text" class="but" disabled>
+            </div>
+            <div class="datasource leftfix">数据源:</div>
+            <div class="task leftfix">任务:</div>
         </div>
     </div>
 </template>
@@ -297,8 +119,63 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-.el-row {
-    margin-bottom: 20px;
+.leftfix {
+    float: left;
+}
+
+.rightfix {
+    float: right;
+}
+
+.clearfix::after {
+    clear: both;
+}
+
+.header .title {
+    padding-left: 5px;
+    border-left: 10px solid #337ecc;
+
+}
+
+.info {
+    height: 100px;
+    font-size: 14px;
+    padding: 10px;
+    padding-left: 20px;
+    box-sizing: content-box;
+}
+
+.port,
+.datasource,
+.task {
+    width: 300px;
+    height: 50px;
+    line-height: 50px;
+
+}
+
+.port .number {
+
+    color: #337ecc;
+    font-weight: 700;
+    background-color: white;
+
+
+}
+
+.port .but {
+    opacity: 0;
+    width: 50px;
+    background-color: #409EFF;
+    background-clip: text;
+}
+
+.datasource a {
+    color: #409EFF;
+}
+
+.task a {
+    color: rgb(239, 179, 68);
 }
 
 .el-row:last-child {

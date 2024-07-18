@@ -1,7 +1,16 @@
 <template>
 
-    <el-dialog :model-value="dialogVisible" title="任务添加-安全多方计算" @close="handleClose">
+    <el-dialog :model-value="dialogVisible" @close="handleClose">
         <el-card>
+            <template #header>
+                <div class="card-header">
+                    <span>
+                        <h3 class="title">
+                            任务添加-安全多方计算
+                        </h3>
+                    </span>
+                </div>
+            </template>
             <div class="form">
                 <el-form ref="formRef" style="max-width: 600px" label-width="auto" label-position="left">
                     <el-form-item label="任务名称:">
@@ -24,12 +33,39 @@
 
                     </el-form-item>
                     <div v-for="(item, index) in form.nodeInfo">
-                        <el-form-item :label='`节点-${index}:`'>
-                            <el-input v-model="item.nodeAddress" style="width: 300px;"></el-input>
+                        <el-form-item class="users" :label='`节点-${index}:`'>
+                            <el-select v-model="item.nodeAddress" placeholder="请选择节点"
+                                @change="handleUserSelectChange(index)">
+                                <el-option class="option" v-for="item in currentUsersList" :key="item.id"
+                                    :label='`${item.username}:${item.nodeIp}:${item.nodePort}`'
+                                    :value='`${item.nodeIp}:${item.nodePort}`'>
+                                </el-option>
+                                <div class="pagination-container">
+                                    <el-pagination v-model:current-page="queryFormUsers.page"
+                                        v-model:page-size="queryFormUsers.pageSize" :small="small" :disabled="disabled"
+                                        :background="background" layout="prev, pager, next" :total="totalUser"
+                                        @size-change="handleUserSizeChange" @current-change="handleUserCurrentChange" />
+                                </div>
+                            </el-select>
                         </el-form-item>
-                        <el-form-item label="节点数据地址:">
-                            <el-input v-model="item.nodeDataPath" style="width: 400px;"></el-input>
+
+                        <el-form-item class="datasource" :label='`数据源-${index}:`'>
+                            <el-select v-model="item.dataSourceUuid" placeholder="请选择数据源"
+                                @change="handleDatasourceSelectChange" @click="handleClick(index)" v-loading="loading">
+                                <el-option class="option" v-for="item in currentDatasourceList" :key="item.id"
+                                    :label='`${item.dataSourceName}: ${item.dataSourceUuid}`'
+                                    :value="item.dataSourceUuid">
+                                </el-option>
+                                <div class="pagination-container">
+                                    <el-pagination v-model:current-page="queryFormDataSource.page"
+                                        v-model:page-size="queryFormDataSource.pageSize" :small="small"
+                                        :disabled="disabled" :background="background" layout="prev, pager, next"
+                                        :total="totalDataSource" @size-change="handleDataSourceSizeChange"
+                                        @current-change="handleDataSourceCurrentChange" />
+                                </div>
+                            </el-select>
                         </el-form-item>
+
                         <el-form-item />
                     </div>
 
@@ -51,33 +87,130 @@ import SomeTools from '@/utils/someTools'
 import { ElMessage } from 'element-plus';
 import axios from 'axios'
 import { create } from 'js-md5';
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
+import { getUsersAPI } from '@/apis/users.js';
+import { getOthersMpcDataSourceAPI } from '@/apis/dataSource.js'
 var getTime = new Date().getTime(); //获取到当前时间戳
 var time = new Date(getTime); //创建一个日期对象
 const formRef = ref(null)
 const emits = defineEmits(['update:modelValue', 'initTaskList'])
+const totalUser = ref(0)
+const loading = ref(false)
+const totalDataSource = ref(0)
+const currentDatasourceList = ref([])
+const userInfoStore = ref({
+    userInfoList: []
+})
+const currentUsersList = ref([])
+const queryFormUsers = ref({
+    queryName: '',
+    page: 1,
+    pageSize: 10
+})
 
+const queryFormDataSource = ref({
+    queryName: '',
+    page: 1,
+    pageSize: 10,
+    targetUserId: null,
+})
 const sendForm = ref({
     taskName: '',
     taskUuid: '',
     createTime: '',
+    taskDescription: '',
     taskParams: {
         task_id: '',
         task_name: '',
         nodeNum: 1,
         nodeAddressList: [],
-        nodeDataPathList: [],
+        dataSourceUuidList: [],
     }
 })
+
 const form = ref({
     taskName: '',
     taskDescription: '',
     nodeNum: 1,
     nodeInfo: [{
         nodeAddress: '',
-        nodeDataPath: ''
+        dataSourceUuid: ''
     }],
 })
+const handleClick = (index) => {
+
+    queryFormDataSource.value.targetUserId = userInfoStore.value.userInfoList[index].id
+    getDataSource()
+}
+const getUsers = async () => {
+    const res = await getUsersAPI(queryFormUsers.value)
+    if (res.code === 1000) {
+
+        currentUsersList.value = res.data.userList
+        console.log(currentUsersList.value);
+        totalUser.value = res.data.total
+    } else {
+        ElMessage({
+            type: 'error',
+            message: '获取用户信息失败'
+        })
+    }
+}
+const getDataSource = async () => {
+    const res = await getOthersMpcDataSourceAPI(queryFormDataSource.value)
+    if (res.code === 1000) {
+        currentDatasourceList.value = []
+        currentDatasourceList.value = res.data.dataSourceList
+        totalDataSource.value = res.data.total
+        return true
+    } else {
+        ElMessage({
+            type: 'error',
+            message: '获取数据源信息失败'
+        })
+        return false
+    }
+}
+const handleUserSizeChange = (pagesize) => {
+    queryFormUsers.value.page = 1
+    queryFormUsers.value.pageSize = pagesize
+    getUsers()
+}
+const handleUserCurrentChange = (pageNum) => {
+    queryFormUsers.value.page = pageNum
+    getUsers()
+}
+const handleDataSourceSizeChange = (pagesize) => {
+    queryFormDataSource.value.page = 1
+    queryFormDataSource.value.pageSize = pagesize
+    getDataSource()
+}
+const handleDataSourceCurrentChange = (pageNum) => {
+    queryFormDataSource.value.page = pageNum
+
+    getDataSource()
+}
+const findUser = (addr, index) => {
+    var i
+    const list = currentUsersList.value
+    for (i = 0; i < list.length; i++) {
+        console.log(addr, list[i].nodeIp + ':' + list[i].nodePort)
+        if (addr === list[i].nodeIp + ':' + list[i].nodePort) {
+            console.log(list[i])
+            userInfoStore.value.userInfoList[index] = list[i]
+            console.log(userInfoStore.value.userInfoList[index])
+        }
+    }
+}
+const handleUserSelectChange = (index) => {
+    console.log(index);
+    findUser(form.value.nodeInfo[index].nodeAddress, index)
+    console.log(userInfoStore.value.userInfoList)
+}
+const handleDatasourceSelectChange = (row) => {
+    console.log(row);
+
+}
 const handleClose = () => {
     emits('update:modelValue', false)
 }
@@ -98,23 +231,25 @@ const handleNodeInfo = () => {
     var i
     for (i = 0; i < form.value.nodeInfo.length; i++) {
         sendForm.value.taskParams.nodeAddressList.push(form.value.nodeInfo[i].nodeAddress)
-        sendForm.value.taskParams.nodeDataPathList.push(form.value.nodeInfo[i].nodeDataPath)
+        sendForm.value.taskParams.dataSourceUuidList.push(form.value.nodeInfo[i].dataSourceUuid)
 
     }
 }
-const handleConfirm = () => {
+
+const handleConfirm = async () => {
     const temp = sendForm.value
     console.log(form.value.nodeInfo)
     sendForm.value.taskName = form.value.taskName
     sendForm.value.taskParams.nodeNum = form.value.nodeNum
     sendForm.value.taskParams.task_name = "carbon_green_life"
     sendForm.value.taskUuid = SomeTools.guid()
+    sendForm.value.taskDescription = form.value.taskDescription
     sendForm.value.taskParams.task_id = sendForm.value.taskUuid
     sendForm.value.createTime = nowDate(time)
     handleNodeInfo()
     console.log(sendForm.value)
 
-    axios.post('https://' + localStorage.getItem('nodeIp') + ':' + localStorage.getItem('nodePort')
+    await axios.post('https://' + localStorage.getItem('nodeIp') + ':' + localStorage.getItem('nodePort')
         + '/api' + '/MPC' + '/createTask', sendForm.value
         , {
             headers: {
@@ -141,6 +276,7 @@ const handleConfirm = () => {
 
 
 }
+
 const handleNumChange = (row) => {
 
     var i
@@ -149,19 +285,25 @@ const handleNumChange = (row) => {
             //console.log(1)
             const node = ref({
                 nodeAddress: '',
-                nodeDataPath: ''
+                dataSourceUuid: ''
             })
             form.value.nodeInfo.push(node.value)
+            userInfoStore.value.userInfoList.push({})
         }
     } else if (row < form.value.nodeInfo.length) {
         // console.log(2)
 
         for (i = form.value.nodeInfo.length; i > row; i--) {
             form.value.nodeInfo.splice(i - 1, 1)
+            userInfoStore.value.userInfoList.splice(i - 1, 1)
+
         }
     }
     console.log(row, form.value.nodeInfo.length)
 }
+onMounted(() => {
+    getUsers()
+})
 </script>
 
 <style lang="scss" scoped>
@@ -169,7 +311,56 @@ const handleNumChange = (row) => {
     border: none;
 }
 
+
+
 ::v-deep.myinput {
     display: flex;
+}
+
+::v-deep.el-pagination {
+    //padding-top: 5px;
+    box-sizing: border-box;
+    justify-content: center;
+
+
+    .el-pager li {
+        padding: 0;
+    }
+
+    .el-pager li.is-active {
+        color: #337ecc;
+        cursor: default;
+        font-size: 14px;
+        font-weight: normal;
+        font-weight: 500;
+
+    }
+}
+
+
+
+
+.el-select__selected-item {
+    color: #337ecc;
+}
+
+.el-select-dropdown__item.is-hovering {
+    background-color: #d9ecff;
+}
+
+.el-select-dropdown__item.is-selected {
+    color: rgb(37, 192, 37);
+    font-weight: normal;
+    background-color: #d9ecff;
+}
+
+
+
+::v-deep.el-select__selected-item {
+    color: #337ecc;
+}
+
+.example-showcase .el-loading-mask {
+    z-index: 9;
 }
 </style>
