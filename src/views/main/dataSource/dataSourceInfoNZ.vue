@@ -91,7 +91,8 @@
                     </div>
                 </div>
                 <el-table :data="othersTableData" stripe style="width: 100%"
-                    :header-cell-style="{ 'text-align': 'center' }" :cell-style="{ 'text-align': 'center' }" border>
+                    :header-cell-style="{ 'text-align': 'center', background: '#f5f7fa', color: '#606266', border: 0 }"
+                    :cell-style="{ 'text-align': 'center' }" border>
                     <el-table-column fixed type="index" label="序号" align="center" width="60">
                         <template #default="{ $index }">
                             {{ (queryForm.page - 1) * queryForm.pageSize + $index + 1 }}
@@ -321,5 +322,19 @@ onMounted(() => getOthersDataSource())
     color: #6b778c;
     font-size: 32px;
     font-weight: 600;
+}
+
+.el-tabs::v-deep .el-tabs__item {
+
+    color: gray;
+    transition: all .2s linear;
+
+}
+
+.el-tabs::v-deep .el-tabs__item.is-active {
+    color: rgb(22, 119, 255);
+    font-weight: bold;
+    border-bottom: 1px solid #1677ff;
+    transition: all .2s linear;
 }
 </style>

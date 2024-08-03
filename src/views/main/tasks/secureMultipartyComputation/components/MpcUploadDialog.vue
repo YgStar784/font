@@ -1,6 +1,6 @@
 <template>
 
-    <el-dialog :model-value="dialogVisible" @close="handleClose">
+    <el-dialog class="dialog" :model-value="dialogVisible" @close="handleClose">
         <el-card>
             <template #header>
                 <div class="card-header">
@@ -34,7 +34,7 @@
                     </el-form-item>
                     <div v-for="(item, index) in form.nodeInfo">
                         <el-form-item class="users" :label='`节点-${index}:`'>
-                            <el-select v-model="item.nodeAddress" placeholder="请选择节点"
+                            <el-select class="custom-select" v-model="item.nodeAddress" placeholder="请选择节点"
                                 @change="handleUserSelectChange(index)">
                                 <el-option class="option" v-for="item in currentUsersList" :key="item.id"
                                     :label='`${item.username}:${item.nodeIp}:${item.nodePort}`'
@@ -89,7 +89,7 @@ import axios from 'axios'
 import { create } from 'js-md5';
 import { onMounted, ref } from 'vue';
 import { getUsersAPI } from '@/apis/users.js';
-import { getOthersMpcDataSourceAPI } from '@/apis/dataSource.js'
+import { getMpcDataSourceAPI } from '@/apis/dataSource.js'
 var getTime = new Date().getTime(); //获取到当前时间戳
 var time = new Date(getTime); //创建一个日期对象
 const formRef = ref(null)
@@ -157,7 +157,7 @@ const getUsers = async () => {
     }
 }
 const getDataSource = async () => {
-    const res = await getOthersMpcDataSourceAPI(queryFormDataSource.value)
+    const res = await getMpcDataSourceAPI(queryFormDataSource.value)
     if (res.code === 1000) {
         currentDatasourceList.value = []
         currentDatasourceList.value = res.data.dataSourceList
@@ -311,6 +311,9 @@ onMounted(() => {
     border: none;
 }
 
+.el-dialog {
+    padding: 0;
+}
 
 
 ::v-deep.myinput {
@@ -318,10 +321,14 @@ onMounted(() => {
 }
 
 ::v-deep.el-pagination {
+
     //padding-top: 5px;
     box-sizing: border-box;
     justify-content: center;
 
+    .el-card {
+        box-shadow: 0 0 10px black;
+    }
 
     .el-pager li {
         padding: 0;
@@ -340,9 +347,8 @@ onMounted(() => {
 
 
 
-.el-select__selected-item {
-    color: #337ecc;
-}
+
+
 
 .el-select-dropdown__item.is-hovering {
     background-color: #d9ecff;
@@ -352,15 +358,16 @@ onMounted(() => {
     color: rgb(37, 192, 37);
     font-weight: normal;
     background-color: #d9ecff;
+    opacity: 1;
+
 }
 
 
+.el-select:focus {
+    .el-select__selected-item {
+        font-weight: 900;
+        color: black;
+    }
 
-::v-deep.el-select__selected-item {
-    color: #337ecc;
-}
-
-.example-showcase .el-loading-mask {
-    z-index: 9;
 }
 </style>

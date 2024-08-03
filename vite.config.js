@@ -48,8 +48,10 @@ export default defineConfig({
     }
   },
   server: {
+    host: '127.0.0.1',
+    port: 5173,
     proxy: {
-      '/api': {
+      '/api/loginUser': {
         secure: false,
         target: 'https://120.48.18.15:7000/api',
         changeOrigin: true,

@@ -39,7 +39,8 @@
                         </el-row>
                     </div>
                 </div>
-                <el-table :data="myTableData" stripe style="width: 100%" :header-cell-style="{ 'text-align': 'center' }"
+                <el-table :data="myTableData" stripe style="width: 100%"
+                    :header-cell-style="{ 'text-align': 'center', background: '#f5f7fa', color: '#606266', border: 0 }"
                     :cell-style="{ 'text-align': 'center' }" border>
                     <el-table-column fixed type="index" label="序号" align="center" width="60">
                         <template #default="{ $index }">
@@ -294,6 +295,20 @@ onMounted(() => getOthersDataSource())
 
 
 <style lang="scss" scoped>
+.el-tabs::v-deep .el-tabs__item {
+
+    color: gray;
+    transition: all .2s linear;
+
+}
+
+.el-tabs::v-deep .el-tabs__item.is-active {
+    color: rgb(22, 119, 255);
+    font-weight: bold;
+    border-bottom: 1px solid #1677ff;
+    transition: all .2s linear;
+}
+
 .addbut {
     display: flex;
     border-radius: 10px;

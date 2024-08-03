@@ -184,4 +184,29 @@ onMounted(() => getUsers())
     justify-content: right;
 
 }
+
+/* 修改Element UI中el-switch开启状态的背景颜色 */
+.el-switch .el-switch__core,
+.el-switch .el-switch__label {
+    transition: 0.3s linear;
+}
+
+.el-switch .el-switch__core::after {
+    transition: 0.3s linear;
+}
+
+/* 这里设置为蓝色 */
+::v-deep.el-switch.is-checked .el-switch__core {
+    transition: 0.3s linear;
+    border-color: #43be4c;
+    background-color: #43be4c;
+
+}
+
+/* 如果需要修改开启时候的按钮颜色 */
+.el-switch.is-checked .el-switch__core::after {
+    left: unset;
+    right: 2px;
+
+}
 </style>

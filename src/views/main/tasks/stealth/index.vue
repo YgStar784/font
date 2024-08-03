@@ -13,7 +13,7 @@
             <el-col :span="7">
                 <el-input placeholder="请输入搜索的任务名称" clearable v-model="queryForm.queryName"></el-input></el-col>
             <el-button type="primary" :icon="Search" @click="getMyTask">{{ $t('table.search') }}</el-button>
-            <el-button type="primary" @click="handleAddTask">
+            <el-button type="primary" @click="handleDialog">
                 <el-icon style="margin-right: 10px">
                     <el-icon>
                         <Plus />
@@ -21,7 +21,9 @@
                 </el-icon>匿踪查询</el-button>
 
         </el-row>
-        <el-table :data="tableData" stripe style="width: 100%" border>
+        <el-table :data="tableData" stripe
+            :header-cell-style="{ 'text-align': 'center', background: '#f5f7fa', color: '#606266', border: 0 }"
+            style="width: 100%" border>
             <el-table-column fixed type="index" label="序号" align="center" width="60">
                 <template #default="{ $index }">
                     {{ (queryForm.page - 1) * queryForm.pageSize + $index + 1 }}
@@ -63,14 +65,14 @@
                 @current-change="handleCurrentChange" />
         </div>
     </el-card>
-    <Dialog v-model="dialogVisible" :dialogValue="dialogValue" v-if="dialogVisible" @initUserList="getUsers"
+    <PirDialog v-model="dialogVisible" :dialogValue="dialogValue" v-if="dialogVisible" @="getMyTask"
         :dialogTableValue="dialogTableValue" />
 
 </template>
 <script setup>
 import { useRouter } from 'vue-router'
 import axios from 'axios'
-
+import PirDialog from './components/stealthAddDialog.vue'
 import { getMyTaskAPI, downloadResultByUuidAPI } from '@/apisLittle/task'
 import { ElMessage } from 'element-plus'
 import { onMounted, ref } from 'vue'
@@ -82,6 +84,7 @@ import { isNULL } from '@/utils/filters'
 import { ElMessageBox } from 'element-plus'
 import { delUserAPI } from '@/apis/users'
 import { useUserStore } from '@/stores/user';
+
 const link = document.createElement('a')
 const level = localStorage.getItem('level')
 const queryForm = ref({
@@ -175,7 +178,9 @@ const changeState = async (info) => {
     }
     // console.log(res)
 }
-
+const handleDialog = () => {
+    dialogVisible.value = true
+}
 const handleDownLoad = async (row) => {
     ElMessageBox.confirm(
         '确定下载' + '"' + row.fileName + '"' + '吗?',

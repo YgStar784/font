@@ -23,7 +23,9 @@
                     </el-icon>安全多方计算</el-button>
 
             </el-row>
-            <el-table :data="tableData" stripe style="width: 100%" border>
+            <el-table :data="tableData" stripe
+                :header-cell-style="{ 'text-align': 'center', background: '#f5f7fa', color: '#606266', border: 0 }"
+                style="width: 100%" border>
                 <el-table-column fixed type="index" label="序号" align="center" width="60">
                     <template #default="{ $index }">
                         {{ (queryForm.page - 1) * queryForm.pageSize + $index + 1 }}
@@ -75,7 +77,7 @@ import axios from 'axios'
 import MpcDialog from './components/MpcUploadDialog.vue'
 import { getMyTaskAPI, downloadResultByUuidAPI } from '@/apisLittle/task'
 import { ElMessage } from 'element-plus'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { Search, Edit, Setting, Delete } from '@element-plus/icons-vue'
 import { getUsersAPI } from '@/apis/users';
 import { taskOptions } from '../taskOptions'
@@ -84,6 +86,7 @@ import { isNULL } from '@/utils/filters'
 import { ElMessageBox } from 'element-plus'
 import { delUserAPI } from '@/apis/users'
 import { useUserStore } from '@/stores/user';
+
 const link = document.createElement('a')
 const level = localStorage.getItem('level')
 const queryForm = ref({
@@ -243,10 +246,71 @@ const handleDownLoad = async (row) => {
                         } */
         })
 }
+const sendToOtherFont = async () => {
+    axios.post('http://127.0.0.1:5173/createtask'
+        , queryForm.value
+        , {
+            headers: {
+                Authorization: localStorage.getItem('token'),
+            }
+        }).then(res => {
+            console.log(res)
+            if (res.data.code === 1000) {
+                tableData.value = res.data.data.taskList
+                console.log(tableData.value)
+                total.value = res.data.data.total
+            }
+            else {
+                const msg = res.message
+                ElMessage({
+                    type: 'error',
+                    message: msg,
+                })
+            }
+        })
+}
+/* const { createServer } = require('http');
 
-onMounted(() => getMyTask())
+const HOST = 'localhost';
+const PORT = '8080';
+
+const server = createServer((req, resp) => {
+    // the first param is status code it returns
+    // and the second param is response header info
+    resp.writeHead(200, { 'Content-Type': 'text/plain' });
+
+    console.log('server is working...');
+
+    // call end method to tell server that the request has been fulfilled
+    resp.end('hello nodejs http server');
+});
+
+server.listen(PORT, HOST, (error) => {
+    if (error) {
+        console.log('Something wrong: ', error);
+        return;
+    }
+
+    console.log(`server is listening on http://${HOST}:${PORT} ...`);
+});
+
+ */
+setInterval(() => {
+    getMyTask()
+}, 10 * 1000);
+
+onMounted(() => {
+    getMyTask()
+    sendToOtherFont()
+})
 </script>
 <style scoped lang="scss">
+.card-header {
+    padding-left: 10px;
+    border-left: 10px solid #409EFF;
+
+}
+
 .header {
     padding-bottom: 20px;
     box-sizing: border-box;

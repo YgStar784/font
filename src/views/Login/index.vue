@@ -1,19 +1,42 @@
 <template>
-    <div class="back-ground">
-        <div class="login-container">
-            <el-form ref="formRef" :rules="rules" :model="form" class="login-form">
-                <div class="title-container">
-                    <h3 class="title">用户登录</h3>
+    <div class="login-container">
+        <div class="body">
+            <div class="login-wrap">
+                <div class="intro">
+                    <h3>Manage System</h3>
+
+
                 </div>
-                <el-form-item prop="username">
-                    <el-input prefix-icon="User" v-model="form.username" />
-                </el-form-item>
-                <el-form-item prop="password">
-                    <el-input prefix-icon="Lock" v-model="form.password" show-password />
-                </el-form-item>
-            </el-form>
-            <el-button type="primary" class="login-button" @click="handleLogin" @keydown.enter="keyDown()">登 录
-            </el-button>
+                <div class="login-form">
+                    <el-form ref="formRef" :rules="rules" :model="form" auto-complete="on">
+                        <div class="title-container">
+                            <h3 class="title">登录</h3>
+                        </div>
+                        <el-form-item prop="username">
+                            <div class="svg-container">
+                                <el-icon>
+                                    <Avatar />
+                                </el-icon>
+                            </div>
+                            <el-input placeholder="请输入用户名" class="user" v-model="form.username" />
+                        </el-form-item>
+                        <el-form-item prop="password">
+                            <div class="svg-container">
+                                <el-icon>
+                                    <Lock />
+                                </el-icon>
+                            </div>
+                            <el-input type="password" placeholder="请输入密码" class="pwd" v-model="form.password" />
+                        </el-form-item>
+                        <el-button style="width: 100%; margin-bottom: 10px;padding: 20px 0;" type="primary"
+                            class="login-button" @click="handleLogin" @keydown.enter="keyDown()">登录
+                        </el-button>
+                    </el-form>
+                </div>
+            </div>
+            <div class="footer">
+
+            </div>
         </div>
     </div>
 </template>
@@ -119,8 +142,217 @@ $bg: #2d3a4b;
 $dark_gray: #889aa4;
 $light_gray: #eee;
 
+.login-container {
+    width: 100vw;
+    height: 100vh;
+    background-color: #d9ecff;
+    background-position: 50%;
+    background-size: cover;
+    background-repeat: no-repeat;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
 
-.back-ground {
+.login-container .body {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+
+    transform: translate3d(-50%, -50%, 0);
+}
+
+.intro {
+    position: relative;
+    width: 50%;
+    color: #fff;
+    text-align: center;
+    height: 500px;
+    line-height: 500px;
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+    background: linear-gradient(-60deg, #ecf5ff, #409EFF, #337ecc);
+    //background: radial-gradient(circle, #ecf5ff, #409EFF);
+    /*     background: linear-gradient(#a0cfff, #409EFF, #ecf5ff) */
+}
+
+.intro h3 {
+    font-size: 30px;
+    vertical-align: middle;
+    font-style: italic;
+    text-shadow: 0 0 5px black;
+
+}
+
+.login-container .login-wrap {
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-flex: 1;
+    -ms-flex-positive: 1;
+    flex-grow: 1;
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+    position: relative;
+    background-color: #fff;
+    border-radius: 10px;
+    -webkit-box-shadow: 0 16px 32px 0 rgba(0, 0, 0, .08);
+    box-shadow: 0 16px 32px 0 rgba(0, 0, 0, .08);
+    margin-top: 30px;
+    width: 1000px;
+    height: 500px;
+}
+
+.login-container .login-form {
+    width: 50%;
+    padding: 80px 59px;
+    max-width: 100%;
+    margin: 0 auto;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.login-container .title-container {
+    position: relative;
+}
+
+.login-container .title-container .title {
+    font-size: 26px;
+    color: #000;
+    margin: 0 auto 40px auto;
+    text-align: left;
+    font-weight: 700;
+}
+
+.login-container .el-form-item {
+    border: 1px solid rgba(0, 0, 0, .1);
+    border-radius: 5px;
+    color: #454545;
+
+
+}
+
+::v-deep.el-form-item .el-form-item__content {
+    line-height: 40px;
+    position: relative;
+    font-size: 14px;
+}
+
+.login-container .svg-container {
+    color: #889aa4;
+    vertical-align: middle;
+    width: 30px;
+    display: inline-block;
+}
+
+.el-icon {
+    width: 1em;
+    height: 1em;
+    vertical-align: -.15em;
+    fill: currentColor;
+    overflow: hidden;
+}
+
+.el-input {
+    display: inline-block;
+    height: 47px;
+    width: 85%;
+}
+
+
+
+
+.el-input ::v-deep .el-input__wrapper {
+
+    display: inline-block;
+    width: 100%;
+    height: 47px;
+    padding: 0;
+    text-align: center;
+    border: 0;
+    box-shadow: 0 0 0 0;
+}
+
+.el-form-item.is-error ::v-deep .el-input__wrapper,
+.el-form-item.is-error ::v-deep .el-input__wrapper.is-focus,
+.el-form-item.is-error ::v-deep .el-input__wrapper:focus,
+.el-form-item.is-error ::v-deep .el-input__wrapper:hover,
+.el-form-item.is-error ::v-deep .el-select__wrapper,
+.el-form-item.is-error ::v-deep .el-select__wrapper.is-focus,
+.el-form-item.is-error ::v-deep .el-select__wrapper:focus,
+.el-form-item.is-error ::v-deep .el-select__wrapper:hover,
+.el-form-item.is-error ::v-deep .el-textarea__inner,
+.el-form-item.is-error ::v-deep .el-textarea__inner.is-focus,
+.el-form-item.is-error ::v-deep .el-textarea__inner:focus,
+.el-form-item.is-error ::v-deep .el-textarea__inner:hover {
+    box-shadow: 0 0 0 0px var(--el-color-danger) inset;
+}
+
+.el-input ::v-deep input:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px #fff inset !important;
+    box-shadow: inset 0 0 0 1000px #fff !important;
+    -webkit-text-fill-color: #000 !important;
+}
+
+
+
+
+.el-input ::v-deep input {
+    background: transparent;
+    border: 0;
+    appearance: none;
+    border-radius: 0;
+    padding: 12px 5px 12px 15px;
+    color: #000;
+    height: 47px;
+    caret-color: #000;
+
+}
+
+::v-deep .el-input__inner {
+    appearance: none;
+    background-color: #fff;
+    background-image: none;
+    border-radius: 4px;
+
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+    color: #666;
+    display: inline-block;
+    font-size: inherit;
+    height: 40px;
+    line-height: 40px;
+    outline: 0;
+    padding: 0 15px;
+    -webkit-transition: border-color .2s cubic-bezier(.645, .045, .355, 1);
+    transition: border-color .2s cubic-bezier(.645, .045, .355, 1);
+    width: 100%;
+}
+
+
+/* 
+    .el-input ::v-deep .el-input__inner {
+        appearance: none;
+        background-color: #fff;
+        background-image: none;
+        border-radius: 4px;
+
+        -webkit-box-sizing: border-box;
+        box-sizing: border-box;
+        color: #666;
+        display: inline-block;
+        font-size: inherit;
+        height: 40px;
+        line-height: 40px;
+        outline: 0;
+        padding: 0 15px;
+        -webkit-transition: border-color .2s cubic-bezier(.645, .045, .355, 1);
+        transition: border-color .2s cubic-bezier(.645, .045, .355, 1);
+        width: 100%;
+ */
+
+
+/* .back-ground {
     display: flex;
     justify-content: center;
     align-items: stretch;
@@ -195,5 +427,5 @@ $light_gray: #eee;
         cursor: pointer;
         user-select: none;
     }
-}
+} */
 </style>

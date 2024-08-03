@@ -39,4 +39,8 @@ const loginout = () => {
 .el-dropdown-menu__item {
     white-space: nowrap;
 }
+
+::v-depp.el-avatar {
+    border: 0;
+}
 </style>
