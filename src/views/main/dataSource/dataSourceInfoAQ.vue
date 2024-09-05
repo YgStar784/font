@@ -136,7 +136,7 @@ import { options } from './options'
 import { getMyMpcDataSourceAPI, getOthersMpcDataSourceAPI } from '@/apis/dataSource'
 import { delMyDataSourceAPI } from '@/apisLittle/dataSource'
 import { Search, User, Delete } from '@element-plus/icons-vue'
-import { littleUrl } from '@/views/Login/littleUrlSet';
+
 import { useRouter } from 'vue-router'
 const router = useRouter()
 const activeName = ref('myUpload')
@@ -152,7 +152,7 @@ const othersTableData = ref([])
 const del_form = ref({
     dataSourceUuid: ''
 })
-console.log(littleUrl.value)
+
 const queryForm = ref({
     queryName: '',
     page: 1,

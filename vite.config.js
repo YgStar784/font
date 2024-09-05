@@ -2,6 +2,8 @@ import { fileURLToPath, URL } from 'node:url'
 import requireTransform from 'vite-plugin-require-transform';
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import commonjs from '@rollup/plugin-commonjs';//引入commojs
+
 //import GlobalsPolyfills from '@esbuild-plugins/node-globals-polyfill'
 //const GlobalsPolyfills = require("@esbuild-plugins/node-globals-polyfill").default
 //import { url } from './src/views/Login/url.vue'
@@ -20,6 +22,7 @@ const url = useUserStore.userInfo.nodeIp + ':' + useUserStore.userInfo.nodePort 
 console.log('vite')
 export default defineConfig({
   plugins: [
+    commonjs(),
     vue(),
     requireTransform({ fileRegex: /.js$|.vue$/ }),
   ],
@@ -48,12 +51,19 @@ export default defineConfig({
     }
   },
   server: {
-    host: '127.0.0.1',
-    port: 5173,
+
     proxy: {
-      '/api/loginUser': {
+      /*       '/api': {
+              secure: false,
+              target: 'http://127.0.0.1:4523/m1/4311960-3954686-default/api',
+              changeOrigin: true,
+              rewrite: (path) => path.replace(/^\/api/, '')
+            }, */
+
+
+      '/api': {
         secure: false,
-        target: 'https://120.48.18.15:7000/api',
+        target: 'https://120.48.18.15:8000/api',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '')
       },

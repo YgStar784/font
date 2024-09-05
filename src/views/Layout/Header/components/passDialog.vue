@@ -27,8 +27,9 @@ import { ref } from 'vue'
 
 import { ElMessage } from 'element-plus'
 import { changePasswordAPI } from '@/apis/users'
-import { sha256 } from 'js-sha256'
 
+
+const sha256 = require("js-sha256").sha256;
 const emits = defineEmits(['update:modelValue'])
 const form = ref({
     oldpassword: '',

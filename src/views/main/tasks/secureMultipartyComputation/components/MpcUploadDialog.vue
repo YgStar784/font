@@ -49,21 +49,8 @@
                             </el-select>
                         </el-form-item>
 
-                        <el-form-item class="datasource" :label='`数据源-${index}:`'>
-                            <el-select v-model="item.dataSourceUuid" placeholder="请选择数据源"
-                                @change="handleDatasourceSelectChange" @click="handleClick(index)" v-loading="loading">
-                                <el-option class="option" v-for="item in currentDatasourceList" :key="item.id"
-                                    :label='`${item.dataSourceName}: ${item.dataSourceUuid}`'
-                                    :value="item.dataSourceUuid">
-                                </el-option>
-                                <div class="pagination-container">
-                                    <el-pagination v-model:current-page="queryFormDataSource.page"
-                                        v-model:page-size="queryFormDataSource.pageSize" :small="small"
-                                        :disabled="disabled" :background="background" layout="prev, pager, next"
-                                        :total="totalDataSource" @size-change="handleDataSourceSizeChange"
-                                        @current-change="handleDataSourceCurrentChange" />
-                                </div>
-                            </el-select>
+                        <el-form-item class="datasource" :label='`数据源描述-${index}:`'>
+                            <el-input placeholder="请输入所期望的数据源描述信息" v-model="item.dataSourceDesc"></el-input>
                         </el-form-item>
 
                         <el-form-item />
@@ -86,9 +73,9 @@ import { nowDate } from '../../date'
 import SomeTools from '@/utils/someTools'
 import { ElMessage } from 'element-plus';
 import axios from 'axios'
-import { create } from 'js-md5';
+import { backendPort } from '../../backendPort';
 import { onMounted, ref } from 'vue';
-import { getUsersAPI } from '@/apis/users.js';
+
 import { getMpcDataSourceAPI } from '@/apis/dataSource.js'
 var getTime = new Date().getTime(); //获取到当前时间戳
 var time = new Date(getTime); //创建一个日期对象
@@ -120,11 +107,11 @@ const sendForm = ref({
     createTime: '',
     taskDescription: '',
     taskParams: {
-        task_id: '',
-        task_name: '',
+        taskId: '',
+        taskName: '',
         nodeNum: 1,
         nodeAddressList: [],
-        dataSourceUuidList: [],
+        requireDataDescriptionList: [],
     }
 })
 
@@ -134,7 +121,7 @@ const form = ref({
     nodeNum: 1,
     nodeInfo: [{
         nodeAddress: '',
-        dataSourceUuid: ''
+        dataSourceDesc: ''
     }],
 })
 const handleClick = (index) => {
@@ -143,18 +130,28 @@ const handleClick = (index) => {
     getDataSource()
 }
 const getUsers = async () => {
-    const res = await getUsersAPI(queryFormUsers.value)
-    if (res.code === 1000) {
-
-        currentUsersList.value = res.data.userList
-        console.log(currentUsersList.value);
-        totalUser.value = res.data.total
-    } else {
-        ElMessage({
-            type: 'error',
-            message: '获取用户信息失败'
+    axios.post('https://120.48.18.15:7000/api/getAllUser', queryFormUsers.value
+        , {
+            headers: {
+                Authorization: localStorage.getItem('token'),
+            }
+        }).then(res => {
+            console.log(res)
+            if (res.data.code === 1000) {
+                currentUsersList.value = res.data.data.userList
+                console.log(currentUsersList.value);
+                totalUser.value = res.data.data.total
+            }
+            else {
+                const msg = res.message
+                ElMessage({
+                    type: 'error',
+                    message: msg,
+                })
+            }
         })
-    }
+
+
 }
 const getDataSource = async () => {
     const res = await getMpcDataSourceAPI(queryFormDataSource.value)
@@ -228,12 +225,16 @@ const getNodeInfo = async (index) => {
     }
 }
 const handleNodeInfo = () => {
-    var i
+    let i
+    sendForm.value.taskParams.nodeAddressList = []
+    sendForm.value.taskParams.requireDataDescriptionList = []
+    console.log(form.value.nodeInfo.length, sendForm.value.taskParams.nodeAddressList)
     for (i = 0; i < form.value.nodeInfo.length; i++) {
         sendForm.value.taskParams.nodeAddressList.push(form.value.nodeInfo[i].nodeAddress)
-        sendForm.value.taskParams.dataSourceUuidList.push(form.value.nodeInfo[i].dataSourceUuid)
+        sendForm.value.taskParams.requireDataDescriptionList.push(form.value.nodeInfo[i].dataSourceDesc)
 
     }
+    console.log(form.value.nodeInfo.length, sendForm.value.taskParams.nodeAddressList)
 }
 
 const handleConfirm = async () => {
@@ -241,16 +242,16 @@ const handleConfirm = async () => {
     console.log(form.value.nodeInfo)
     sendForm.value.taskName = form.value.taskName
     sendForm.value.taskParams.nodeNum = form.value.nodeNum
-    sendForm.value.taskParams.task_name = "carbon_green_life"
+    sendForm.value.taskParams.taskName = "carbon_green_life"
     sendForm.value.taskUuid = SomeTools.guid()
     sendForm.value.taskDescription = form.value.taskDescription
-    sendForm.value.taskParams.task_id = sendForm.value.taskUuid
+    sendForm.value.taskParams.taskId = sendForm.value.taskUuid
     sendForm.value.createTime = nowDate(time)
     handleNodeInfo()
     console.log(sendForm.value)
 
-    await axios.post('https://' + localStorage.getItem('nodeIp') + ':' + localStorage.getItem('nodePort')
-        + '/api' + '/MPC' + '/createTask', sendForm.value
+    await axios.post(
+        '/api/MPC/createTask', sendForm.value
         , {
             headers: {
                 Authorization: localStorage.getItem('token'),
@@ -285,7 +286,7 @@ const handleNumChange = (row) => {
             //console.log(1)
             const node = ref({
                 nodeAddress: '',
-                dataSourceUuid: ''
+                dataSourceDesc: ''
             })
             form.value.nodeInfo.push(node.value)
             userInfoStore.value.userInfoList.push({})

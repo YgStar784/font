@@ -50,10 +50,10 @@ import { ElMessage } from 'element-plus'
 import 'element-plus/theme-chalk/el-message.css'
 import { login } from '@/apis/login'
 import { setTokenTime } from '@/utils/auth'
-import { sha256 } from 'js-sha256'
-import { url } from '../../littleUrlGet'
-import { littleUrl } from './littleUrlSet'
+
+
 const form = ref({ username: '', password: '' })
+const sha256 = require("js-sha256").sha256; //引入sha256库
 
 //const { ctx } = getCurrentInstance()
 const rules = ref({
@@ -94,14 +94,14 @@ const handleLogin = () => {
                 ElMessage({ type: 'success', message: '登录成功！' })
                 // ctx.$littleBaseUrl = littleUrlSetAPI()
                 //console.log(ctx.$littleBaseUrl)
-                const url = littleUrl
-                console.log(url)
+
+
                 //console.log(littleUrl.value)
                 //littleUrl.value = littleUrlSetAPI(littleUrl.value)
                 //console.log(littleUrl.value)
                 //2.跳转首页
                 router.replace({ path: '/' })
-                return localStorage.getItem('nodeIp') + ':' + localStorage.getItem('nodePort') + '/api'
+                return
             } else {
                 ElMessage({
                     type: 'error',
@@ -116,7 +116,7 @@ const handleLogin = () => {
         else {
             ElMessage({ type: 'error', message: '未知错误！' })
         }
-        return ''
+        return
     })
 }
 //点击回车键登录

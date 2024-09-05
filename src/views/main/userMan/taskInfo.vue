@@ -1,6 +1,22 @@
 <template>
+    <!-- 安全多方计算 -->
+    <div class="header header-MPC">
+        <el-row align="middle" class="grid-content">
+            <el-col :span="24">
+                <h3 class="title">安全多方计算</h3>
+            </el-col>
+        </el-row>
+        <div class="info clearfix">
+            <div class="port leftfix">
+                <span>端口:</span>
+                <input type="text" class="but" disabled>
+            </div>
+            <div class="datasource leftfix">数据源:</div>
+            <div class="task leftfix">任务:</div>
+        </div>
+    </div>
     <!-- 匿踪查询 -->
-    <div class="header header-PIR">
+    <!--     <div class="header header-PIR">
         <el-row align="middle" class="grid-content">
             <el-col :span="24">
                 <h3 class="title">匿踪查询</h3>
@@ -20,9 +36,9 @@
                 <a href="#">4</a>
             </div>
         </div>
-    </div>
+    </div> -->
     <!-- 安全多方计算 -->
-    <div class="header header-MPC">
+    <!--     <div class="header header-MPC">
         <el-row align="middle" class="grid-content">
             <el-col :span="24">
                 <h3 class="title">安全多方计算</h3>
@@ -36,9 +52,9 @@
             <div class="datasource leftfix">数据源:</div>
             <div class="task leftfix">任务:</div>
         </div>
-    </div>
+    </div> -->
     <!-- 联邦学习 -->
-    <div class="header header-FL">
+    <!-- 
         <el-row align="middle" class="grid-content">
             <el-col :span="24">
                 <h3 class="title">联邦学习</h3>
@@ -54,9 +70,9 @@
                 <a href="#"></a>
             </div>
         </div>
-    </div>
+    </div> -->
     <!-- 隐私求交 -->
-    <div class="header header-PSI">
+    <!--     <div class="header header-PSI">
         <el-row align="middle" class="grid-content">
             <el-col :span="24">
                 <h3 class="title">隐私求交</h3>
@@ -69,7 +85,7 @@
             <div class="datasource leftfix">数据源:</div>
             <div class="task leftfix">任务:</div>
         </div>
-    </div>
+    </div> -->
 </template>
 
 

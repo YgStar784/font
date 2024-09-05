@@ -23,6 +23,8 @@ export default {
     '/datasourceinfoNZ': '数据源-匿踪查询',
     '/datasourceinfoAQ': '数据源-安全多方计算',
     '/taskinfo': '任务信息',
+    '/mpc': '安全多方计算',
+    '/mpcplayerinfo': '安全多方计算-任务信息'
   },
   login: {
     title: '用户登录',

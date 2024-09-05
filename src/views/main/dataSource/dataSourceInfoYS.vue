@@ -135,7 +135,7 @@ import { options } from './options'
 import { getMyPsiDataSourceAPI, getOthersPsiDataSourceAPI } from '@/apis/dataSource'
 import { delMyDataSourceAPI } from '@/apisLittle/dataSource'
 import { Search, User, Delete } from '@element-plus/icons-vue'
-import { littleUrl } from '@/views/Login/littleUrlSet';
+
 const router = useRouter()
 const dialogVisible = ref(false)
 const myTableData = ref([])
@@ -151,7 +151,7 @@ const dialogValue = ref(null)
 const del_form = ref({
     dataSourceUuid: ''
 })
-console.log(littleUrl.value)
+
 const queryForm = ref({
     queryName: '',
     page: 1,

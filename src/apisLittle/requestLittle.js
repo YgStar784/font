@@ -7,7 +7,7 @@ import { diffTokenTime } from '@/utils/auth'
 import { useRouter } from 'vue-router'
 import { authAPI } from '@/apis/auth'
 import { ref } from 'vue'
-import { littleUrl } from '@/views/Login/littleUrlSet'
+
 
 console.log('https://' + localStorage.getItem('nodeIp') + ':' + localStorage.getItem('nodePort') + '/api')
 const defaultConfig = {

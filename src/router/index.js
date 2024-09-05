@@ -18,6 +18,7 @@ import PrivateSetIntersection from '../views/main/tasks/privateSetIntersection/i
 import StealthQuery from '../views/main/tasks/stealth/index.vue'
 
 import MPC from '../views/main/tasks/secureMultipartyComputation/index.vue'
+import PlayerInfo from '../views/main/tasks/secureMultipartyComputation/components/playerInfo.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -113,6 +114,11 @@ const router = createRouter({
               path: '/mpc',
               name: 'mpc',
               component: MPC,
+            },
+            {
+              path: '/mpcplayerinfo',
+              name: 'mpcplayerinfo',
+              component: PlayerInfo,
             },
             {
               path: '/privateSetIntersection',

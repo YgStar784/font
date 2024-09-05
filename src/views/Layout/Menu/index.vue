@@ -53,20 +53,14 @@ onMounted(() => getMenu()) */
                     </el-icon>
                     任务信息</el-menu-item>
             </el-sub-menu>
-            <el-sub-menu index="1">
-                <template #title>
-                    <el-icon>
-                        <HelpFilled />
-                    </el-icon>
-                    <span>数据源</span>
-                </template>
-                <!--                 <el-menu-item index="/datasourceupload">
+            <!--  -->
+            <!--                 <el-menu-item index="/datasourceupload">
                     <el-icon>
                         <EditPen />
                     </el-icon>数据源导入
                 </el-menu-item> -->
 
-                <!--                 <el-sub-menu index="/datasourceupload">
+            <!--                 <el-sub-menu index="/datasourceupload">
                     <template #title> <span>
                             <el-icon>
                                 <EditPen />
@@ -78,18 +72,18 @@ onMounted(() => getMenu()) */
                     <el-menu-item index="/datasourceupload">隐私求交</el-menu-item>
 
                 </el-sub-menu> -->
-                <!-- </el-menu-item> -->
+            <!-- </el-menu-item> -->
 
-                <!--                 <el-menu-item index="/datasourceinfo">
+            <!--                 <el-menu-item index="/datasourceinfo">
                     <el-icon>
                         <Histogram />
                     </el-icon>
                     数据源信息</el-menu-item> -->
-                <el-menu-item index="/datasourceinfoNZ">匿踪查询</el-menu-item>
+            <!--                 <el-menu-item index="/datasourceinfoNZ">匿踪查询</el-menu-item>
                 <el-menu-item index="/datasourceinfoLB">联邦学习</el-menu-item>
                 <el-menu-item index="/datasourceinfoAQ">安全多方计算</el-menu-item>
-                <el-menu-item index="/datasourceinfoYS">隐私求交</el-menu-item>
-                <!-- <el-sub-menu index="/datasourceinfo">
+                <el-menu-item index="/datasourceinfoYS">隐私求交</el-menu-item> -->
+            <!-- <el-sub-menu index="/datasourceinfo">
                     <template #title> <span>
                             <el-icon>
                                 <Histogram />
@@ -100,8 +94,8 @@ onMounted(() => getMenu()) */
                     <el-menu-item index="/datasourceinfoAQ">安全多方计算</el-menu-item>
                     <el-menu-item index="/datasourceinfoYS">隐私求交</el-menu-item> 
                 </el-sub-menu> -->
-            </el-sub-menu>
-
+            <!--             </el-sub-menu>
+ -->
             <el-sub-menu index="/tasks">
                 <template #title>
                     <el-icon>
@@ -109,7 +103,7 @@ onMounted(() => getMenu()) */
                     </el-icon>
                     <span>任务管理</span>
                 </template>
-                <el-menu-item index="/stealthquery">
+                <!--                 <el-menu-item index="/stealthquery">
                     <el-icon>
                         <Search />
                     </el-icon>
@@ -118,17 +112,17 @@ onMounted(() => getMenu()) */
                     <el-icon>
                         <Reading />
                     </el-icon>
-                    联邦学习</el-menu-item>
+                    联邦学习</el-menu-item> -->
                 <el-menu-item index="/mpc">
                     <el-icon>
                         <Crop />
                     </el-icon>
                     安全多方计算</el-menu-item>
-                <el-menu-item index="/privateSetIntersection">
+                <!--                 <el-menu-item index="/privateSetIntersection">
                     <el-icon>
                         <Aim />
                     </el-icon>
-                    隐私求交</el-menu-item>
+                    隐私求交</el-menu-item> -->
 
             </el-sub-menu>
 
