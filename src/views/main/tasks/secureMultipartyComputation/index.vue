@@ -196,14 +196,14 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import axios from 'axios'
-import MpcDialog from './components/MpcUploadDialog.vue'
+import MpcDialog from './components/MpcUploadDialogCanvas.vue'
 import { getMyTaskAPI, downloadResultByUuidAPI } from '@/apisLittle/task'
 import { ElMessage } from 'element-plus'
 import { onMounted, ref, watch, onBeforeUnmount } from 'vue'
 import { Search, Edit, Setting, Delete } from '@element-plus/icons-vue'
 import { getUsersAPI } from '@/apis/users';
 import { taskOptions } from '../taskOptions'
-import { taskOptionsJoin } from '../taskOptionsJoin'
+import { taskOptionsJoin } from '../taskOptionsJoinMPC'
 import PlayerDialog from './components/playerInfoDialog.vue'
 import HandleTaskInvitationsDialoag from './components/handleTaskInvitationsDialoag.vue'
 import HandleRejectDialog from './components/handleRejectDialog.vue'

@@ -103,12 +103,12 @@ onMounted(() => getMenu()) */
                     </el-icon>
                     <span>任务管理</span>
                 </template>
-                <!--                 <el-menu-item index="/stealthquery">
+                <el-menu-item index="/stealthquery">
                     <el-icon>
                         <Search />
                     </el-icon>
                     匿踪查询</el-menu-item>
-                <el-menu-item index="/federatedLearning">
+                <!--                 <el-menu-item index="/federatedLearning">
                     <el-icon>
                         <Reading />
                     </el-icon>

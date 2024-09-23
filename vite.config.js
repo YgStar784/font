@@ -58,8 +58,8 @@ export default defineConfig({
               target: 'http://127.0.0.1:4523/m1/4311960-3954686-default/api',
               changeOrigin: true,
               rewrite: (path) => path.replace(/^\/api/, '')
-            }, */
-
+            },
+       */
 
       '/api': {
         secure: false,

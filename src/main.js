@@ -2,6 +2,7 @@ import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import store from './store'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 import '@/styles/index.scss'
@@ -10,6 +11,7 @@ import router from './router'
 import i18n from './i18n/index'
 import filters from './utils/filters'
 const pinia = createPinia()
+
 const app = createApp(App)
 app.config.globalProperties.$littleBaseUrl = ''
 
@@ -17,6 +19,7 @@ app.config.globalProperties.$littleBaseUrl = ''
 
 pinia.use(piniaPluginPersistedstate)
 app.use(ElementPlus)
+app.use(store)
 app.use(pinia)
 app.use(router)
 app.use(i18n)
