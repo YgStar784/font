@@ -3,6 +3,7 @@ import requireTransform from 'vite-plugin-require-transform';
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import commonjs from '@rollup/plugin-commonjs';//引入commojs
+import legacy from '@vitejs/plugin-legacy';
 
 //import GlobalsPolyfills from '@esbuild-plugins/node-globals-polyfill'
 //const GlobalsPolyfills = require("@esbuild-plugins/node-globals-polyfill").default
@@ -25,9 +26,12 @@ export default defineConfig({
     commonjs(),
     vue(),
     requireTransform({ fileRegex: /.js$|.vue$/ }),
+    legacy({
+      targets: ['defaults', 'not IE 11']
+    })
   ],
   optimizeDeps: {
-    include: ['axios'],
+    include: ['axios', 'some-package', 'another-package'],
     /*     esbuildOptions: {
           define: {
             global: 'globalThis',
