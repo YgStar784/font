@@ -57,20 +57,19 @@ export default defineConfig({
   server: {
 
     proxy: {
-      /*       '/api': {
-              secure: false,
-              target: 'http://127.0.0.1:4523/m1/4311960-3954686-default/api',
-              changeOrigin: true,
-              rewrite: (path) => path.replace(/^\/api/, '')
-            },
-       */
-
       '/api': {
         secure: false,
-        target: 'https://120.48.18.15:8000/api',
+        target: 'http://127.0.0.1:4523/m1/4311960-3954686-default/api',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '')
       },
+
+      /*       '/api': {
+              secure: false,
+              target: 'https://120.48.18.15:8000/api',
+              changeOrigin: true,
+              rewrite: (path) => path.replace(/^\/api/, '')
+            }, */
       '/littleApi': {
         secure: false,
         //target: `https://${localStorage.getItem('nodeIp')}:${localStorage.getItem('nodePort')}/api `,

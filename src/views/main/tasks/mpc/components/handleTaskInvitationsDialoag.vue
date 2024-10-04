@@ -14,8 +14,12 @@
 
         <el-card>
             <el-form ref="formRef" :model="form" label-position="left" :rules="rules">
-                <el-form-item label="数据源路径:" prop="dataPath">
+                <el-form-item v-if="props.taskInfo.taskType === 'carbon_green_life'" label="数据源路径:" prop="dataPath">
                     <el-input v-model="form.dataPath" placeholder="请输入相应的路径">
+                    </el-input>
+                </el-form-item>
+                <el-form-item v-if="props.taskInfo.taskType !== 'carbon_green_life'" label="credits:" prop="credits">
+                    <el-input type="number" v-model="form.credits" placeholder="请输入相应的值">
                     </el-input>
                 </el-form-item>
                 <el-form-item style="float:right">
@@ -39,9 +43,15 @@ const props = defineProps({
 const formRef = ref()
 const form = ref({
     dataPath: '',
+    credits: undefined,
 })
 const rules = ref({
     dataPath: [{
+        required: true,
+        message: '路径不能为空',
+        trigger: 'blur',
+    }],
+    credits: [{
         required: true,
         message: '路径不能为空',
         trigger: 'blur',
@@ -55,8 +65,17 @@ const handleClose = () => {
 const onSubmit = async () => {
 
     formRef.value.validate(async (valid) => {
+        if (props.taskInfo.taskType === 'carbon_green_life') {
+            if (form.value.credits === undefined) {
+                form.value.credits = 0
+            }
+        } else {
+            if (form.value.dataPath === '') {
+                form.value.dataPath = 'credits'
+            }
+        }
         if (valid) {
-            await axios.post('/api/MPC/handleTaskInvitations', { id: props.taskInfo.id, dataPath: form.value.dataPath, state: 0 }
+            await axios.post('/api/MPC/handleTaskInvitations', { id: props.taskInfo.id, dataPath: form.value.dataPath, credits: Number(form.value.credits), state: 0 }
                 , {
                     headers: {
                         Authorization: localStorage.getItem('token'),

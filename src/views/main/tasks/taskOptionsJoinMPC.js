@@ -28,6 +28,11 @@ export const taskOptionsJoin = [
         width: 100,
     },
     {
+        label: '任务类型',
+        prop: 'taskType',
+        width: 100,
+    },
+    {
         label: '上传路径',
         prop: 'createTime',
         width: 160,

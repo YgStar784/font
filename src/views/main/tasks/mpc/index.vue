@@ -81,6 +81,12 @@
                             </el-table-column>
                             <el-table-column fixed="right" label="操作" width="160px" align="center">
                                 <template #default="{ row }">
+                                    <el-tooltip class="item" effect="light" content="画布" placement="top">
+                                        <el-button type="primary" size="small" @click="showCanvas(row)"><el-icon>
+                                                <Picture />
+                                            </el-icon></el-button>
+                                    </el-tooltip>
+
                                     <el-tooltip class="item" effect="light" content="参与者信息" placement="top">
                                         <el-button type="success" size="small" icon="Search" label="查看"
                                             @click="handlePlayerInfo(row)" />
@@ -95,6 +101,7 @@
                                         <el-button type="warning" size="small" icon="CaretRight" label="进行"
                                             @click="beginTask(row)" />
                                     </el-tooltip>
+
                                     <!--     <el-button type="primary" size="small" :icon="Edit" @click="handleDialogValue(row)">编辑</el-button>
                     <el-button type="danger" size="small" :icon="Delete" @click="delUser(row)">删除</el-button> -->
                                 </template>
@@ -160,12 +167,17 @@
                         </el-table-column>
                         <el-table-column fixed="right" label="操作" width="160px" align="center">
                             <template #default="{ row }">
+                                <el-button type="primary" size="small" @click="showCanvas(row)"><el-icon>
+                                        <PictureRounded />
+                                    </el-icon></el-button>
                                 <el-button v-if="row.state === 0" type="success" size="small">已接受</el-button>
                                 <el-button v-if="row.state === 1" type="danger" size="small">已拒绝</el-button>
                                 <el-button v-if="row.state === 2" type="success" size="small"
-                                    @click="handleAccept(row)">接受</el-button>
+                                    @click="handleAccept(row)"><el-icon><Select /></el-icon></el-button>
                                 <el-button v-if="row.state === 2" type="danger" size="small"
-                                    @click="handleReject(row)">拒绝</el-button>
+                                    @click="handleReject(row)"><el-icon>
+                                        <CloseBold />
+                                    </el-icon></el-button>
 
 
                                 <!--     <el-button type="primary" size="small" :icon="Edit" @click="handleDialogValue(row)">编辑</el-button>
@@ -190,6 +202,8 @@
             :taskName="taskName" :taskUuid="taskUuid" :createTime="createTime" :taskDescription="taskDescription" />
         <HandleTaskInvitationsDialoag v-model="dialogVisibleAccept" :taskInfo="taskInfo" @initMyJoin="getMyTaskJoin" />
         <HandleRejectDialog v-model="centerDialogVisible" :taskInfo="taskInfo" @initMyJoin="getMyTaskJoin" />
+        <canvasShowDialog v-model="canvasShowDialogValue" :taskInfo="taskInfo" />
+
     </div>
 
 </template>
@@ -198,7 +212,7 @@ import { useRouter } from 'vue-router'
 import axios from 'axios'
 import MpcDialog from './components/MpcUploadDialogCanvas.vue'
 import { ElMessage } from 'element-plus'
-import { onMounted, ref, watch, onBeforeUnmount } from 'vue'
+import { onMounted, ref, watch, onBeforeUnmount, nextTick } from 'vue'
 import { Search, Edit, Setting, Delete } from '@element-plus/icons-vue'
 import { taskOptions } from '../taskOptions'
 import { taskOptionsJoin } from '../taskOptionsJoinMPC'
@@ -208,7 +222,7 @@ import HandleRejectDialog from './components/handleRejectDialog.vue'
 import { changeStateAPI } from '@/apis/users'
 import { isNULL } from '@/utils/filters'
 import { ElMessageBox } from 'element-plus'
-
+import canvasShowDialog from './components/canvasDialogShow.vue'
 const link = document.createElement('a')
 const pending = ref(0)
 const level = localStorage.getItem('level')
@@ -249,9 +263,11 @@ const dialogTableValue = ref({})
 const taskPlayerList = ref([])
 const playertotal = ref(0)
 const begin = ref(0)
+const canvasShowDialogValue = ref(false)
 const handleDialog = () => {
     dialogVisible.value = true
 }
+
 const handleDialogValue = (row) => {
     if (isNULL(row)) {
         dialogValue.value = '添加用户'
@@ -312,7 +328,12 @@ const cellStyleMy = (data) => {
         };
     }
 };
-
+const showCanvas = async (row) => {
+    taskInfo.value = row
+    await nextTick()
+    console.log('taskInfo.value', taskInfo.value);
+    canvasShowDialogValue.value = true
+}
 const handleSizeChange = (pagesize) => {
     queryForm.value.page = 1
     queryForm.value.pageSize = pagesize

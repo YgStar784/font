@@ -39,7 +39,7 @@ export const taskOptions = [
     },
     {
         label: '任务类型',
-        prop: 'taskState',
+        prop: 'taskType',
         width: 150,
     },
 
