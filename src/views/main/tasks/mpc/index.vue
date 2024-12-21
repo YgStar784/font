@@ -12,7 +12,7 @@
                 </div>
             </template>
 
-            <el-tabs v-model="activeName" type="card" @tab-click="handleClick">
+            <el-tabs v-model="activeName" tab-position="top" type="card" @tab-click="handleClick">
 
                 <el-tab-pane class="demo-tabs" name="myUpload">
                     <template #label>
@@ -34,7 +34,7 @@
                                     <el-icon>
                                         <Plus />
                                     </el-icon>
-                                </el-icon>安全多方计算
+                                </el-icon>四则运算
                             </el-button>
 
 
@@ -52,24 +52,23 @@
                                 v-for="(item, index) in taskOptions" :key="index">
                                 <template v-slot="{ row }" align="center" v-if="item.label === '任务状态'">
                                     <template v-if="row.taskState === 0">
-                                        <el-check-tag checked="true" type="success" effect="dark">成功</el-check-tag>
+                                        <a-badge status="success" text="成功" />
 
                                     </template>
                                     <template v-else-if="row.taskState === 1">
-                                        <el-check-tag checked="true" type="error" effect="dark">失败</el-check-tag>
+                                        <a-badge status="error" text="失败" />
 
                                     </template>
-                                    <template v-else-if="row.taskState === 2" effect="dark">
-                                        <el-check-tag checked="true" type="primary">进行中</el-check-tag>
-                                    </template>
-                                    <template v-else-if="row.taskState === 3" effect="dark">
-                                        <el-check-tag checked="true" type="info">待确认</el-check-tag>
+                                    <template v-else-if="row.taskState === 2">
+                                        <a-badge status="processing" text="进行中" /> </template>
+                                    <template v-else-if="row.taskState === 3">
+                                        <a-badge state="processing" color="purple" text="待确认" />
                                     </template>
                                     <template v-else-if="row.taskState === 4" effect="dark">
-                                        <el-check-tag checked="true" type="warning">可进行</el-check-tag>
+                                        <a-badge status="processing" color="yellow" text="可进行" />
                                     </template>
                                     <template v-else-if="row.taskState === 5" effect="dark">
-                                        <el-check-tag checked="true" type="danger">拒绝</el-check-tag>
+                                        <a-badge color="magenta" text="拒绝"></a-badge>
                                     </template>
                                 </template>
                                 <template v-slot="{ row }" align="center" v-if="item.label === '任务类型'">
@@ -79,23 +78,25 @@
 
                                 </template>
                             </el-table-column>
+
                             <el-table-column fixed="right" label="操作" width="160px" align="center">
                                 <template #default="{ row }">
-                                    <el-tooltip class="item" effect="light" content="画布" placement="top">
-                                        <el-button type="primary" size="small" @click="showCanvas(row)"><el-icon>
-                                                <Picture />
-                                            </el-icon></el-button>
-                                    </el-tooltip>
-
                                     <el-tooltip class="item" effect="light" content="参与者信息" placement="top">
                                         <el-button type="success" size="small" icon="Search" label="查看"
                                             @click="handlePlayerInfo(row)" />
                                     </el-tooltip>
-                                    <el-tooltip v-if="row.taskState === 0" class="item" effect="light"
+                                    <el-tooltip class="item" effect="light" content="画布" placement="top">
+                                        <el-button size="small" @click="showCanvas(row)"><el-icon>
+                                                <PictureRounded />
+                                            </el-icon></el-button>
+                                    </el-tooltip>
+
+
+                                    <!--                                     <el-tooltip v-if="row.taskState === 0" class="item" effect="light"
                                         :content="row.fileName" placement="right">
                                         <el-button type="danger" size="small" icon="Download" label="下载"
                                             @click="handleDownLoad(row)" />
-                                    </el-tooltip>
+                                    </el-tooltip> -->
                                     <el-tooltip v-if="row.taskState === 4" class="item" effect="light" content="开始进行"
                                         placement="top">
                                         <el-button type="warning" size="small" icon="CaretRight" label="进行"
@@ -164,20 +165,52 @@
                             <template v-slot="{ row }" align="center" style="background-color: #79bbff;"
                                 v-if="item.label === '状态' && item.state === 2">
                             </template>
+                            <template v-slot="{ row }" align="center" v-if="item.label === '结果接收'">
+                                <template v-if="row.isReceiveResult === 0">
+                                    <el-icon>
+                                        <Close />
+                                    </el-icon></template>
+                                <template v-else-if="row.isReceiveResult === 1 || row.isReceiveResult === 2">
+                                    <el-icon>
+                                        <Check />
+                                    </el-icon></template>
+
+                            </template>
                         </el-table-column>
                         <el-table-column fixed="right" label="操作" width="160px" align="center">
                             <template #default="{ row }">
-                                <el-button type="primary" size="small" @click="showCanvas(row)"><el-icon>
-                                        <PictureRounded />
-                                    </el-icon></el-button>
-                                <el-button v-if="row.state === 0" type="success" size="small">已接受</el-button>
-                                <el-button v-if="row.state === 1" type="danger" size="small">已拒绝</el-button>
-                                <el-button v-if="row.state === 2" type="success" size="small"
-                                    @click="handleAccept(row)"><el-icon><Select /></el-icon></el-button>
-                                <el-button v-if="row.state === 2" type="danger" size="small"
-                                    @click="handleReject(row)"><el-icon>
+
+                                <!--                                 <el-button v-if="row.state === 0" type="success" size="small">已接受</el-button>
+                                <el-button v-if="row.state === 1" type="danger" size="small">已拒绝</el-button> -->
+                                <el-tooltip class="item" effect="light" content="处理" placement="top">
+                                    <el-button type="primary" size="small" @click="handleAccept(row)"><el-icon>
+                                            <Edit />
+                                        </el-icon></el-button>
+                                </el-tooltip>
+                                <el-tooltip v-if="row.isReceiveResult === 2" class="item" effect="light" content="下载"
+                                    placement="top">
+                                    <el-button type="danger" size="small" icon="Download" label="下载"
+                                        @click="handleDownLoad(row)" />
+                                </el-tooltip>
+                                <el-tooltip class="item" effect="light" content="画布" placement="top">
+                                    <el-button size="small" @click="showCanvas(row)"><el-icon>
+                                            <PictureRounded />
+                                        </el-icon></el-button>
+                                </el-tooltip>
+                                <!--                                 <el-tooltip v-if="row.isReceiveResult === 0" class="item" effect="light"
+                                    :content="row.fileName" placement="right">
+                                    <el-button type="danger" size="small" icon="Download" label="下载"
+                                        @click="handleDownLoad(row)" />
+                                </el-tooltip>
+                                <el-tooltip v-if="row.isReceiveResult === 1" class="item" effect="light"
+                                    :content="row.fileName" placement="right">
+                                    <el-button type="danger" size="small" icon="Download" label="下载"
+                                        @click="handleDownLoad(row)" />
+                                </el-tooltip> -->
+
+                                <!--                  <el-button type="danger" size="small" @click="handleReject(row)"><el-icon>
                                         <CloseBold />
-                                    </el-icon></el-button>
+                                    </el-icon></el-button> -->
 
 
                                 <!--     <el-button type="primary" size="small" :icon="Edit" @click="handleDialogValue(row)">编辑</el-button>
@@ -223,6 +256,7 @@ import { changeStateAPI } from '@/apis/users'
 import { isNULL } from '@/utils/filters'
 import { ElMessageBox } from 'element-plus'
 import canvasShowDialog from './components/canvasDialogShow.vue'
+import { NButton } from 'naive-ui'
 const link = document.createElement('a')
 const pending = ref(0)
 const level = localStorage.getItem('level')
@@ -234,12 +268,12 @@ const taskInfo = ref({})
 const queryForm = ref({
     queryName: '',
     page: 1,
-    pageSize: 2
+    pageSize: 10
 })
 const queryFormJoin = ref({
     queryName: '',
     page: 1,
-    pageSize: 2
+    pageSize: 10
 })
 const queryFormPlayer = ref({
     uuid: '',
@@ -480,7 +514,7 @@ watch(() => tableData.value, beginCount)
 
 const handleDownLoad = async (row) => {
     ElMessageBox.confirm(
-        '确定下载' + '"' + row.fileName + '"' + '吗?',
+        '确定下载' + row.taskName + '-' + row.taskUuid + '的结果文件吗?',
         '下载',
         {
             confirmButtonText: '确认',
@@ -509,7 +543,7 @@ const handleDownLoad = async (row) => {
                         const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
                         const objectUrl = URL.createObjectURL(blob) // 创建URL
                         link.href = objectUrl
-                        link.download = row.fileName// 自定义文件名
+                        link.download = 'mpc-' + row.taskUuid// 自定义文件名
                         link.click() // 下载文件
                         URL.revokeObjectURL(objectUrl); // 释放内存
                     }
@@ -613,13 +647,13 @@ server.listen(PORT, HOST, (error) => {
 });
 
  */
-let timer = setInterval(() => {
+/* let timer = setInterval(() => {
     getMyTask()
     getMyTaskJoin()
-}, 10 * 1000);
+}, 10 * 1000); */
 onBeforeUnmount(() => {
-    clearInterval(timer)
-})
+/*     clearInterval(timer)
+ */})
 onMounted(() => {
     getMyTask()
     getMyTaskJoin()

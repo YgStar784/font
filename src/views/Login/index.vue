@@ -1,13 +1,20 @@
 <template>
+
     <div class="login-container">
+        <!-- <img src="@/assets/images/logo5-removebg.png" width="150" alt="">
+ -->
         <div class="body">
             <div class="login-wrap">
+
                 <div class="intro">
-                    <h3>Manage System</h3>
-
-
+                    <div class="intro-info">
+                        <p>FemHub是基于多方安全计算、联邦学习、同态加密等主流隐私计算技术自主研发的分布式隐私计算平台。</p>
+                        <p>平台涵盖隐私安全求交、联合建模、联邦预测、匿踪查询等能力，致力打造适配全业务场景且安全高效的隐私计算平台。</p>
+                    </div>
                 </div>
                 <div class="login-form">
+                    <img class="logo-img" src="@/assets/images/logo5-removebg.png" width="100" alt="">
+
                     <el-form ref="formRef" :rules="rules" :model="form" auto-complete="on">
                         <div class="title-container">
                             <h3 class="title">登录</h3>
@@ -145,13 +152,39 @@ $light_gray: #eee;
 .login-container {
     width: 100vw;
     height: 100vh;
-    background-color: #d9ecff;
+    /* 渐变背景 */
+    /*     background: linear-gradient(to bottom right,
+            rgb(235, 245, 255),
+            rgb(216, 235, 255),
+            rgb(197, 225, 255),
+            rgb(121, 187, 255),
+            rgb(159, 206, 255),
+            rgb(235, 245, 255),
+            rgb(216, 235, 255),
+            rgb(197, 225, 255),
+            rgb(159, 206, 255), ); */
+
+    /* 浅蓝色背景 */
+    background-color: rgb(235.9, 245.3, 255);
     background-position: 50%;
     background-size: cover;
     background-repeat: no-repeat;
     text-align: center;
     position: relative;
     overflow: hidden;
+    background-image: url('@/assets/images/login-bg.jpg');
+
+}
+
+.logo-img {
+    position: absolute;
+    /* 使用绝对定位 */
+    right: 5px;
+    /* 距离右边框 5px */
+    top: -40px;
+    /* 根据需要调整垂直对齐方式 */
+    transform: translateY(50%);
+    /* 如果需要居中对齐，可以使用此属性 */
 }
 
 .login-container .body {
@@ -171,7 +204,14 @@ $light_gray: #eee;
     line-height: 500px;
     border-top-left-radius: 10px;
     border-bottom-left-radius: 10px;
-    background: linear-gradient(-60deg, #ecf5ff, #409EFF, #337ecc);
+    background: rgba(62, 112, 246);
+    background-size: cover;
+    background-image: url('@/assets/images/login-bg-femhub.png');
+    text-align: left;
+    line-height: 1.5;
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+    /* 图片完全覆盖背景 */
     //background: radial-gradient(circle, #ecf5ff, #409EFF);
     /*     background: linear-gradient(#a0cfff, #409EFF, #ecf5ff) */
 }
@@ -181,7 +221,6 @@ $light_gray: #eee;
     vertical-align: middle;
     font-style: italic;
     text-shadow: 0 0 5px black;
-
 }
 
 .login-container .login-wrap {
@@ -203,18 +242,37 @@ $light_gray: #eee;
     height: 500px;
 }
 
+.intro-info {
+    margin-top: 220px;
+    box-sizing: border-box;
+    padding: 50px;
+    font-size: 16px;
+    padding: 10px 90px 60px 95px;
+}
+
 .login-container .login-form {
+    position: relative;
     width: 50%;
     padding: 80px 59px;
+
     max-width: 100%;
     margin: 0 auto;
     overflow: hidden;
     box-sizing: border-box;
+    /*   background-color: #FFFFFF;
+    background-image: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%); */
+    /* 白色背景 */
+    border-radius: 10px;
+    /* 圆角 */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    /* 柔和阴影 */
 }
 
 .login-container .title-container {
     position: relative;
+
 }
+
 
 .login-container .title-container .title {
     font-size: 26px;
@@ -222,6 +280,8 @@ $light_gray: #eee;
     margin: 0 auto 40px auto;
     text-align: left;
     font-weight: 700;
+
+    /* 确保兼容性 */
 }
 
 .login-container .el-form-item {
@@ -241,7 +301,7 @@ $light_gray: #eee;
 .login-container .svg-container {
     color: #889aa4;
     vertical-align: middle;
-    width: 30px;
+    width: 12%;
     display: inline-block;
 }
 
@@ -256,7 +316,7 @@ $light_gray: #eee;
 .el-input {
     display: inline-block;
     height: 47px;
-    width: 85%;
+    width: 88%;
 }
 
 
@@ -329,6 +389,40 @@ $light_gray: #eee;
     width: 100%;
 }
 
+.login-button {
+    /*     background: linear-gradient(90deg, #1E3A8A, #3B82F6);
+ */
+    /* 渐变从深蓝到亮蓝 */
+    border: none;
+    /* 去掉边框 */
+    color: #FFFFFF;
+    /* 白色文字 */
+    font-size: 14px;
+    /* 字体大小 */
+    font-weight: 500;
+    /* 加粗 */
+    /*   border-radius: 30px; */
+    /* 圆角 */
+    cursor: pointer;
+    /* 鼠标指针 */
+    transition: all 0.3s ease;
+    color: #fff;
+    background-color: #1677ff;
+    border-color: #1677ff;
+    /* 动画过渡效果 */
+}
+
+.login-button:hover {
+    background: linear-gradient(90deg, #3B82F6, #60A5FA);
+    /* 鼠标悬停时调整渐变 */
+    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.5);
+    /* 增加阴影效果 */
+}
+
+.login-button:active {
+    transform: scale(0.98);
+    /* 点击时缩小效果 */
+}
 
 /* 
     .el-input ::v-deep .el-input__inner {

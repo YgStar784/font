@@ -1,8 +1,8 @@
 <template>
     <div class="hamburger-container">
         <el-icon @click="isCollapse = !isCollapse">
-            <Expand v-show="isCollapse" />
-            <Fold v-show="!isCollapse" />
+            <Expand v-show="!isCollapse" />
+            <Fold v-show="isCollapse" />
         </el-icon>
         <h3></h3>
     </div>

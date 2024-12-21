@@ -8,25 +8,25 @@ export const taskOptions = [
         label: '任务Uuid',
         prop: 'taskUuid',
         //width:105  
-        width: 150,
+        width: 'auto',
 
 
     },
     {
         label: '任务名称',
         prop: 'taskName',
-        width: 150,
+        width: 'auto',
     },
     {
         label: '任务描述',
         prop: 'taskDescription',
-        width: 160,
+        width: 'auto',
     },
 
     {
         label: '创建时间',
         prop: 'createTime',
-        width: 160,
+        width: 'auto',
     },
     /*     {
             label:'等级',

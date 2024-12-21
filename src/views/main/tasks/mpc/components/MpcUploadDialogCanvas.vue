@@ -1,12 +1,13 @@
 <template>
 
-    <el-dialog class="dialog" :model-value="dialogVisible" width="auto" @close="handleClose" @opened="onDialogOpened"
-        append-to-body>
+    <el-dialog class="dialog" v-loading="dialogLoading" :model-value="dialogVisible" width="auto" @close="handleClose"
+        @opened="onDialogOpened" top=3vh append-to-body>
         <!-- 功能按钮栏，仅当选中组件时显示 -->
         <div class="toolbar">
             <div class="left-buttons">
-                <el-button :disabled="!selectedComponent || selectedComponent.type != 'users'" type="primary"
-                    @click="connectComponent">连接</el-button>
+                <el-button
+                    :disabled="!selectedComponent || (selectedComponent.type != 'users' && selectedComponent.type != 'function')"
+                    type="primary" @click="connectComponent">连接</el-button>
                 <el-button :disabled="!selectedComponent" type="danger" @click="deleteComponent">删除</el-button>
                 <el-button :disabled="!selectedComponent" type="warning" @click="moveToTop">置顶</el-button>
             </div>
@@ -77,17 +78,6 @@
                     </div>
                 </div>
 
-
-                <!-- 组件信息栏 -->
-                <div class="sidebar-section components-section">
-                    <div class="sidebar-title">公式</div>
-                    <div class="component-list">
-                        <div v-for="(formula, index) in groupedConnections" :key="index" class="formula-item"
-                            draggable="true">
-                            {{ formula }}
-                        </div>
-                    </div>
-                </div>
                 <!-- 公式模版栏 -->
                 <div class="sidebar-section templates-section">
                     <div class="sidebar-title">模版</div>
@@ -95,6 +85,33 @@
                         <div v-for="(template, index) in formulaTemplates" :key="index" class="template-item"
                             draggable="true" @dragstart="onDragStartTemplate(template)">
                             {{ template.content }}
+                        </div>
+                    </div>
+                    <div class="add-template"
+                        style="display: flex;flex-direction: row;flex-direction: row-reverse;align-items: center;">
+                        <n-button class="add-template-but" strong secondary type="warning" plain
+                            @click="showAddTemplate" circle>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+                                <g fill="none">
+                                    <path
+                                        d="M8.5 2.75a.75.75 0 0 0-1.5 0V7H2.75a.75.75 0 0 0 0 1.5H7v4.25a.75.75 0 0 0 1.5 0V8.5h4.25a.75.75 0 0 0 0-1.5H8.5V2.75z"
+                                        fill="currentColor">
+                                    </path>
+                                </g>
+                            </svg>
+                        </n-button>
+                    </div>
+                    <AddFormulaTemplate v-model="dialogAddFormulaTemplateVisible" :formula="formula"
+                        @update:formula="handleFormulaUpdate">
+                    </AddFormulaTemplate>
+                </div>
+                <!-- 组件信息栏 -->
+                <div class="sidebar-section components-section">
+                    <div class="sidebar-title">公式</div>
+                    <div class="component-list">
+                        <div v-for="(formula, index) in groupedConnections" :key="index" class="formula-item"
+                            draggable="true">
+                            {{ formula }}
                         </div>
                     </div>
                 </div>
@@ -120,11 +137,19 @@
             <!-- 遍历组件数组生成可拖拽的组件 -->
             <div class="sidebar right">
                 <div class="sidebar-title">用户列表</div>
-                <div v-for="(component, index) in currentUsersList" :key="index" class="user-item" draggable="true"
-                    @dragstart="onDragStart(component)">
-                    {{ component.username }}
-                    {{ component.nodeIp }}:{{ component.nodePort }}
+                <div class="user-container">
+                    <div v-for="(component, index) in currentUsersList" :key="index" class="user-item" draggable="true"
+                        @dragstart="onDragStart(component)">
+                        {{ component.username }}
+                        {{ component.nodeIp }}:{{ component.nodePort }}
 
+                    </div>
+                </div>
+                <div class="search-user">
+                    <a-pagination v-model:current="queryFormUsers.page" v-model:page-size="queryFormUsers.pageSize"
+                        @change="handlePageChange" simple :total="totalUser" />
+
+                    <a-input-search v-model:value="searchUserName" placeholder="输入用户名" @search="SearchUser" />
                 </div>
             </div>
 
@@ -143,25 +168,38 @@
                     <el-input type="textarea" v-model="taskInfoForm.taskDescription" placeholder="请输入任务描述"
                         rows="3"></el-input>
                 </el-form-item>
-                <el-form-item label="任务类型" required>
+                <!--                 <el-form-item label="任务类型" required>
                     <el-radio-group v-model="taskInfoForm.taskType">
                         <el-radio label="carbon">碳账户计算</el-radio>
                         <el-radio label="formula" checked>公式计算</el-radio>
                     </el-radio-group>
-                </el-form-item>
+                </el-form-item> -->
 
                 <!-- 添加提示信息 -->
-                <el-alert v-if="taskInfoForm.taskType === 'carbon'" title="碳账户计算将提取选择的用户信息根据固定公式进行计算" type="warning"
-                    show-icon :closable="false" style="margin-top: 10px;"></el-alert>
+                <!--                 <el-alert v-if="taskInfoForm.taskType === 'carbon'" title="碳账户计算将提取选择的用户信息根据固定公式进行计算" type="warning"
+                    show-icon :closable="false" style="margin-top: 10px;"></el-alert> -->
 
                 <!-- 添加 Collapse 折叠面板 -->
                 <el-collapse v-model="activeCollapse" style="margin-top: 20px;">
-                    <el-collapse-item v-for="(group, index) in groupedFormulaUsers" :key="index"
+                    <el-collapse-item v-for="(group, index) in uniqueGroupUserList" :key="index"
                         :title="`公式 ${index + 1}: ${group.formula}`" :name="index">
                         <!-- 在每个分组中遍历 users -->
-                        <el-form-item v-for="(user, userIndex) in group.users" :key="userIndex" :label="user.username"
-                            label-width="120px">
-                            <el-input v-model="user.requireDataDescription" placeholder="请输入数据需求描述"></el-input>
+
+                        <el-form-item class="form-item" v-for="(user, userIndex) in group.users" :key="userIndex"
+                            :label="user.nodeName" label-width="120px">
+                            <div class="desc-input">
+                                <el-input v-for="(desc, index) in user.requireDataDescription"
+                                    v-model="user.requireDataDescription[index]" placeholder="数据描述"></el-input>
+                            </div>
+                        </el-form-item>
+
+                        <el-form-item class="form-item" label="结果接收" style="padding-left: 20px;">
+                            <n-space item-style="display: flex;">
+                                <n-checkbox v-for="(user, userIndex) in group.users" :key="userIndex"
+                                    v-model:checked="user.isReceiveResult">
+                                    {{ user.nodeName }}
+                                </n-checkbox>
+                            </n-space>
                         </el-form-item>
                     </el-collapse-item>
                 </el-collapse>
@@ -181,20 +219,19 @@ import SomeTools from '@/utils/someTools'
 import { ElMessage, ElDrawer, ElMessageBox } from 'element-plus';
 import axios from 'axios'
 import { Transition, onMounted, ref, watch, nextTick, onBeforeUnmount, computed } from 'vue';
-import { log } from 'mathjs';
-import _ from 'lodash';
-import { compareOperatorSequences, extractUsernames } from '@/utils/utils'
-
+import { log, log10 } from 'mathjs';
+import _, { repeat } from 'lodash';
+import { $, compareOperatorSequences, validateFormula, extractUsernames, extractUsernamesWithFunc, isValidFormula } from '@/utils/utils'
+import AddFormulaTemplate from './addFormulaTemplate.vue'
+import { NFormItem, NButton, NCheckbox, NCheckboxGroup, NSpace } from 'naive-ui'
 // 定义用户组件的状态变化控制
 const animationState = new Map();  // 存储每个组件的动画状态
-
 // 定义初始和目标状态
 const initialScale = 1; // 初始缩放比例
 const targetScale = 1.02; // 悬停时的目标缩放比例
-
 const initialColor = '#f0f8ff'; // 初始背景色
 const hoverColor = '#e6f7ff'; // 悬停时的背景色
-
+const dialogLoading = ref(false)
 // 渐变动画的时间
 const transitionDuration = 300; // 过渡时间 300ms
 const taskInfoDialogVisible = ref(false);
@@ -202,15 +239,20 @@ const taskInfoDialogVisible = ref(false);
 const lerp = (start, end, t) => start + (end - start) * t;
 // 公式模版列表
 const formulaTemplates = ref([
-    { name: '3_add_mul', content: '(A + B) * C' },
-    { name: '3_mul_add', content: 'A * (B + C)' },
+    { name: 'arithmetic', content: '(A + B) * C' },
+    { name: 'arithmetic', content: 'A * (B + C)' },
     // 可以根据需要添加更多模版
 ]);
 
+//是否接受任务结果的复选框
+const checkAll = ref(false)
+const checkedUsers = ref([''])
+const isIndeterminate = ref(true)
+const searchUserName = ref('')
 const taskInfoForm = ref({
     taskName: '',
     taskDescription: '', // 添加任务描述字段
-    taskType: '', // 'carbon' 或 'formula'
+    taskType: 'formula', // 'carbon' 或 'formula'
 });
 const groupedFormulaUsers = ref([]) //一个索引代表一个公式中的用户信息（包括username，Ip）
 const requireDataDescriptionMap = new Map()
@@ -228,6 +270,8 @@ const components = ref([
     { label: '组件 B', type: 'componentB' },
     // 可以根据需要添加更多组件
 ]);
+let formula = ref('')
+const dialogAddFormulaTemplateVisible = ref(false) //增加公式的dialog是否显示
 const previewImage = ref('');  // 用于存储预览的图片
 const isPreviewVisible = ref(false);  // 控制预览弹窗的显示与隐藏
 const canvasRef = ref(null); // 引用 canvas DOM
@@ -237,7 +281,7 @@ const componentsOnCanvas = ref([]); // 画布中的组件
 const dragging = ref(false); // 是否处于拖动状态
 const dragOffset = ref({ x: 0, y: 0 }); // 拖动的偏移量
 const selectedComponent = ref(null); // 当前选中的组件
-const operators = ref(['+', '-', '*', '/', '(', ')']);
+const operators = ref(['+', '-', '*', '/', '(', ')', 'Max', 'Min']);
 const alphabet = ref(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']);
 const isDragging = ref(false); // 是否正在拖动
 const isRightMouseDown = ref(false); // 是否右键按下
@@ -254,6 +298,10 @@ const userComponents = ref([
     { label: '组件 A', type: 'componentA' },
     { label: '组件 B', type: 'componentB' },
 ]);
+
+const handlePageChange = async () => {
+    await getUsers()
+}
 // 上下文菜单控制
 const formulaOp = ref([])
 const showContextMenu = ref(false);
@@ -277,11 +325,16 @@ const isRealSourceConn = ref([])
 const userInfoStore = ref({
     userInfoList: []
 })
+const selsectedUserList = ref([])
 const formBasic = ref({
     taskName: '',
     taskDescription: '',
 
 })
+const currentX = ref(0)
+const currentY = ref(0)
+const noSamequeryFormUsers = ref([])
+const tempPage = ref(null)
 const bracketRec = ref([])
 const formulaUserMap = new Map()
 const map = new Map();
@@ -291,9 +344,10 @@ const currentUsersList = ref([])
 const queryFormUsers = ref({
     queryName: '',
     page: 1,
-    pageSize: 8,
+    pageSize: 15,
 })
-
+const noSelected = ref(false)
+const handleSubOpenLoading = ref(true)
 const formLabelWidth = '80px'
 let connId = 0
 let timer
@@ -310,6 +364,7 @@ const form = ref({
         dataSourceDesc: ''
     }],
 })
+const uniqueGroupUserList = ref([])
 const queryFormDataSource = ref({
     queryName: '',
     page: 1,
@@ -325,6 +380,67 @@ const sendForm = ref({
     taskParams: [],
 })
 
+
+//对多个相同的用户的处理，即需要对queryFormUsers进行处理
+
+const getnoSamequeryFormUsers = () => {
+    noSamequeryFormUsers.value = []
+    groupedFormulaUsers.value.forEach(item => {
+
+        const index = noSamequeryFormUsers.value.findIndex(item => item.userinfo === user)
+        if (!index) {
+            noSamequeryFormUsers.value.push({ userinfo: user, repeat: 0 })
+        } else {
+            noSamequeryFormUsers.value[index].repeat++;
+        }
+    })
+    console.log('noSamequeryFormUsers.value', noSamequeryFormUsers.value);
+}
+const mergeUniqueToGrouped = () => {
+    uniqueGroupUserList.value.forEach((uniqueGroup, groupIndex) => {
+        // 获取对应索引的 originalGroup
+        const originalGroup = groupedFormulaUsers.value[groupIndex];
+
+        uniqueGroup.users.forEach(uniqueUser => {
+            // 找到 originalGroup 中匹配的用户列表
+            const matchingUsers = originalGroup.users.filter(user => user.nodeName === uniqueUser.nodeName);
+
+            // 确保在 matchingUsers 中，只有一条数据的 isReceiveResult 为 true
+            let isReceiveResultSet = false;
+
+            matchingUsers.forEach((originalUser, index) => {
+                originalUser.requireDataDescription = uniqueUser.requireDataDescription[index] || '';
+
+                // 复制其他属性
+                originalUser.nodeAddress = uniqueUser.nodeAddress;
+
+                // 确保只有一个 isReceiveResult 为 true
+                if (uniqueUser.isReceiveResult && !isReceiveResultSet) {
+                    originalUser.isReceiveResult = true;
+                    isReceiveResultSet = true; // 标记已经设置过 isReceiveResult 为 true
+                } else {
+                    originalUser.isReceiveResult = false;
+                }
+            });
+        });
+    });
+};
+//显示增加公式的dialog
+const showAddTemplate = () => {
+    dialogAddFormulaTemplateVisible.value = true
+}
+const handleCheckAllChange = (val) => {
+    const userLists = extractUsernames(formula)
+    checkedUsers.value = val ? userLists : []
+    isIndeterminate.value = false
+}
+const handleCheckedCitiesChange = (value) => {
+    const checkedCount = value.length
+    const userLists = extractUsernames(formula)
+
+    checkAll.value = checkedCount === userLists.length
+    isIndeterminate.value = checkedCount > 0 && checkedCount < userLists.length
+}
 // 过渡钩子函数
 const beforeEnter = (el) => {
     el.style.opacity = 0;
@@ -350,34 +466,61 @@ const leave = (el, done) => {
 };
 
 const generateFormula = (formulaStr, x, y) => {
+    let userCount = 0; // 用于计数操作数
+    let i = 0; // 初始化索引
 
-    let userCount = 0, i
-    for (i = 0; i < formulaStr.length; i++) {
-
-        console.log(formulaStr[i]); // 输出每个字符
+    while (i < formulaStr.length) {
+        // 检查当前字符是否为字母
         if (alphabet.value.includes(formulaStr[i])) {
             userCount++;
-            if (i === 0 || i === formulaStr.length - 1) {
-                let bracketEl = { rank: userCount, value: formulaStr[i], bracket: '' }
-                bracketRec.value.push(bracketEl)
+            let leftBracket = '';
+            let rightBracket = '';
 
+            // 向左查找所有左括号
+            let leftIndex = i - 1;
+            while (leftIndex >= 0 && formulaStr[leftIndex] === '(') {
+                leftBracket = '(' + leftBracket;
+                leftIndex--;
             }
-            else if (formulaStr[i - 1] === '(') {
-                let bracketEl = { rank: userCount, value: formulaStr[i], bracket: '(' }
-                bracketRec.value.push(bracketEl)
-            } else if (formulaStr[i + 1] === ')') {
-                let bracketEl = { rank: userCount, value: formulaStr[i], bracket: ')' }
-                bracketRec.value.push(bracketEl)
 
-            } else {
-                let bracketEl = { rank: userCount, value: formulaStr[i], bracket: '' }
-                bracketRec.value.push(bracketEl)
+            // 向右查找所有右括号
+            let rightIndex = i + 1;
+            while (rightIndex < formulaStr.length && formulaStr[rightIndex] === ')') {
+                rightBracket += ')';
+                rightIndex++;
             }
-        } else if (formulaStr[i] != ' ' && formulaStr[i] != '(' && formulaStr[i] != ')') {
-            formulaOp.value.push(formulaStr[i])
+
+            // 将找到的括号与当前字母拼接
+            let bracketEl = {
+                rank: userCount,
+                value: formulaStr[i],
+                bracket: leftBracket + rightBracket // 记录左右括号
+            };
+
+            // 将结果推入 bracketRec 数组
+            bracketRec.value.push(bracketEl);
+
+            // 跳过已遍历的右括号
+            i = rightIndex;
+        } else if (formulaStr[i] !== ' ' && formulaStr[i] !== '(' && formulaStr[i] !== ')') {
+            // 检查是否为操作符
+            formulaOp.value.push(formulaStr[i]);
+            i++;
+        } else {
+            // 跳过空格和括号
+            i++;
         }
     }
+};
+
+//搜索用户
+const SearchUser = async () => {
+    tempPage.value =
+        await getUsers()
 }
+
+
+
 const formulaUsersDraw = (formulaStr, x, y) => {
     let first = {
         type: 'users',
@@ -427,7 +570,14 @@ const onDragStartTemplate = (template) => {
         content: template.content,
     };
 };
+const handleFormulaUpdate = (newFormula) => {
+    // 子组件传递的 `newFormula` 被接收
+    formula.value = newFormula;
+    console.log('Updated Formula:', newFormula);
 
+    formulaTemplates.value.push({ name: 'arithmetic', content: formula.value },
+    )
+};
 // 切换左侧边栏的显示状态
 const toggleLeftSidebar = () => {
     isLeftSidebarVisible.value = !isLeftSidebarVisible.value;
@@ -480,6 +630,8 @@ const confirmSaveCanvas = () => {
     });
 };
 
+
+
 const showPreview = async () => {
     await nextTick();  // 等待 DOM 更新完成
     const canvas = canvasRef.value;
@@ -515,7 +667,7 @@ const groupConnections = (connections) => {
 // 监听键盘按下事件
 const keydownHandler = (event) => {
     //console.log('keyDOwn');
-    if ((event.key === 'Control' || event.key === 'Meta') && selectedComponent && selectedComponent.value.type === 'users') {
+    if ((event.key === 'Control' || event.key === 'Meta') && selectedComponent && (selectedComponent.value.type === 'users' || selectedComponent.value.type === 'function')) {
         isCtrlOrCmdPressed.value = true;
         isConnecting.value = true
     }
@@ -694,7 +846,7 @@ const wouldCreateCycle = (source, target) => {
 // 功能按钮行为
 const connectComponent = () => {
     // 如果当前有选中的组件，进入连接模式
-    if (selectedComponent && selectedComponent.value.type == 'users') {
+    if (selectedComponent && (selectedComponent.value.type === 'users' || selectedComponent.value.type === 'function')) {
         isConnecting.value = true; // 开启连接模式
         //console.log('进入连接模式，选择另一个组件进行连接');
     }
@@ -716,8 +868,8 @@ const completeConnection = (targetComponent) => {
     if (
         selectedComponent &&
         targetComponent &&
-        selectedComponent.value.type == 'users' &&
-        targetComponent.type == 'users' &&
+        (selectedComponent.value.type === 'users' || selectedComponent.value.type === 'function') &&
+        (targetComponent.type === 'users' || targetComponent.type === 'function') &&
         selectedComponent.value !== targetComponent
     ) {
         //检查是否已经存在该连线
@@ -768,13 +920,17 @@ const completeConnection = (targetComponent) => {
 const onDragStart = (component) => {
     // 记录当前拖拽的组件类型
     draggingComponent.value = component;
+    console.log('draggingComponent.value', draggingComponent.value);
     // console.log(onDragStart, component);
 };
 
 const onDrop = (event) => {
     // 确保 canvas 已经挂载并渲染
-    if (canvasRef.value) {
 
+    if (canvasRef.value) {
+        if (draggingComponent.value.username) {
+            selsectedUserList.value.push(draggingComponent.value);
+        }
         const canvasRect = canvasRef.value.getBoundingClientRect();
         const x = event.clientX - canvasRect.left;
         const y = event.clientY - canvasRect.top;
@@ -790,22 +946,38 @@ const onDrop = (event) => {
         // 根据拖拽的类型创建组件
         let newComponent;
         if (operators.value.includes(draggingComponent.value)) {
-            newComponent = {
-                type: 'operators',
-                value: draggingComponent.value,
-                x,
-                y,
-                width: 50,
-                height: 50,
+            if (draggingComponent.value === 'Max' || draggingComponent.value === 'Min') {
+                newComponent = {
+                    type: 'function',
+                    value: draggingComponent.value,
+                    users: [],
+                    bracket: '',
+                    x,
+                    y,
+                    width: 50,
+                    height: 50,
+                };
+            }
+            else {
+                newComponent = {
+                    type: 'operators',
+                    value: draggingComponent.value,
+                    users: [],
+                    x,
+                    y,
+                    width: 50,
+                    height: 50,
+                };
+            }
 
-            };
             if (draggingComponent.value === '(' || draggingComponent.value === ')') {
                 // 检测是否将括号拖拽到用户组件上
                 let isBracketAdded = false;
                 componentsOnCanvas.value.forEach((component) => {
-                    if (component.type === 'users' && x >= component.x && x <= component.x + component.width && y >= component.y && y <= component.y + component.height) {
+                    if ((component.type === 'users' || component.type === 'function') && x >= component.x && x <= component.x + component.width && y >= component.y && y <= component.y + component.height) {
                         if (draggingComponent.value === '(' || draggingComponent.value === ')') {
-                            component.bracket = draggingComponent.value;  // 给组件增加括号
+                            component.bracket = draggingComponent.value + component.bracket;  // 给组件增加括号
+                            console.log('component.bracket', component.bracket);
                             isBracketAdded = true
                         }
                     }
@@ -839,8 +1011,9 @@ const onDrop = (event) => {
                 return;  // 阻止继续添加到画布
             }
         } else {
-            // 检查是否将组件拖放到模板组件上
+            // 检查是否将组件拖放到模板组件或者函数组件上
             let targetTemplateComponent = null;
+            let isAddedToFunction = false;
             componentsOnCanvas.value.forEach(component => {
                 if (component.type === 'users' && component.template) {
                     if (
@@ -852,14 +1025,33 @@ const onDrop = (event) => {
                         targetTemplateComponent = component;
                     }
                 }
+                if (
+                    component.type === 'function' &&
+                    x >= component.x &&
+                    x <= component.x + component.width &&
+                    y >= component.y &&
+                    y <= component.y + component.height
+                ) {
+                    // 将用户组件的 username 添加到 function 组件的 users 数组中
+
+                    component.users.push(draggingComponent.value.username);
+                    isAddedToFunction = true;
+                }
+
             });
 
             if (targetTemplateComponent) {
                 // 执行替换操作
+
                 replaceTemplateWithUserFromExternal(draggingComponent.value, targetTemplateComponent);
                 drawCanvas();
                 return;
             }
+            if (isAddedToFunction) {
+                drawCanvas(); // 重新绘制画布
+                return;
+            }
+
             else {
                 newComponent = {
                     type: 'users',
@@ -990,10 +1182,11 @@ const deleteComponent = () => {
         isConnecting.value = false
 
     }
-    if (selectedComponent.value.type === 'users') {
+
+    if (selectedComponent.value.type === 'users' || selectedComponent.value.type === 'function') {
         // 删除与该组件相关的所有连接
         connections.value = connections.value.filter(conn => conn.source !== selectedComponent.value && conn.target !== selectedComponent.value);
-
+        selsectedUserList.value = selsectedUserList.value.filter(user => user === selectedComponent.value)
         componentsOnCanvas.value = componentsOnCanvas.value.filter(component => component !== selectedComponent.value);
         //console.log(componentsOnCanvas.value);
         selectedComponent.value = null;
@@ -1001,7 +1194,11 @@ const deleteComponent = () => {
         componentsOnCanvas.value = componentsOnCanvas.value.filter(component => component !== selectedComponent.value);
         selectedComponent.value = null;
 
-    } else if (selectedComponent.value.type === 'conn') {
+    } /* else if (selectedComponent.value.type === 'function') {
+        componentsOnCanvas.value = componentsOnCanvas.value.filter(component => component !== selectedComponent.value);
+        selectedComponent.value = null;
+
+    }  */else if (selectedComponent.value.type === 'conn') {
         connections.value = connections.value.filter(conn => conn !== selectedComponent.value.value);
         selectedComponent.value = null;
     }
@@ -1159,6 +1356,26 @@ const drawConnections = () => {
     // 示例 usage
     groupConnections(connections)
     getFormulaGroup(isRealSourceConn.value)
+
+    const removePercentC = (text) => {
+        return text.replace(/%c/g, '');
+    };
+    componentsOnCanvas.value.forEach(component => {
+        if (component.type === 'function') {
+            let isHaveConnec = false
+            connections.value.forEach(conn => {
+                if (conn.source === component || conn.target === component) {
+                    isHaveConnec = true
+                }
+            })
+
+            if (!isHaveConnec) {
+                const funcString = removePercentC(component.value + `( ${component.users.join(',')} )`)
+
+                groupedConnections.value.push(funcString)
+            }
+        }
+    })
     // console.log(groupedConnections.value);
     connections.value.forEach(conn => {
         if (conn.target) {
@@ -1188,13 +1405,34 @@ const getFormulaGroup = (isRealSourceConns) => {
         let formulaLine = ''
         let finalConn = currConn
         //console.log(currConn.source.value.username, noTarget(currConn));
-        if (currConn.source.bracket === '(') {
-            formulaLine = formulaLine + currConn.source.bracket
+        //寻找每个左括号
+        if (currConn.source.bracket) {
+            for (const char of currConn.source.bracket) {
+                if (char === '(') {
+                    formulaLine = formulaLine + char
+
+                }
+            }
         }
         currConn.circleContent === undefined ? currConn.circleContent = '+' : currConn.circleContent
-        formulaLine = formulaLine + currConn.source.value.username
-        if (currConn.source.bracket === ')') {
-            formulaLine = formulaLine + currConn.source.bracket
+        if (currConn.source.type === 'function') {
+            formulaLine = formulaLine + currConn.source.value + `(${currConn.source.users.join(', ')})`
+        }
+        else {
+            formulaLine = formulaLine + currConn.source.value.username
+
+        }
+        /*         if (currConn.source.bracket === ')') {
+                    formulaLine = formulaLine + currConn.source.bracket
+                } */
+        //寻找每个右括号
+        if (currConn.source.bracket) {
+            for (const char of currConn.source.bracket) {
+                if (char === ')') {
+                    formulaLine = formulaLine + char
+
+                }
+            }
         }
         formulaLine = formulaLine + currConn.circleContent
         while (!noTarget(currConn)) {
@@ -1205,28 +1443,68 @@ const getFormulaGroup = (isRealSourceConns) => {
                 break
             }
             finalConn = currConn
-            if (currConn.source.bracket === '(') {
-                formulaLine = formulaLine + currConn.source.bracket
+            if (currConn.source.bracket) {
+                for (const char of currConn.source.bracket) {
+                    if (char === '(') {
+                        formulaLine = formulaLine + char
+
+                    }
+                }
             }
             currConn.circleContent === undefined ? currConn.circleContent = '+' : currConn.circleContent
-            formulaLine = formulaLine + currConn.source.value.username
-            if (currConn.source.bracket === ')') {
-                formulaLine = formulaLine + currConn.source.bracket
+            if (currConn.source.type === 'function') {
+                formulaLine = formulaLine + currConn.source.value + `(${currConn.source.users.join(', ')})`
+            }
+            else {
+                formulaLine = formulaLine + currConn.source.value.username
 
+            }
+            if (currConn.source.bracket) {
+                for (const char of currConn.source.bracket) {
+                    if (char === ')') {
+                        formulaLine = formulaLine + char
+
+                    }
+                }
             }
             formulaLine = formulaLine + currConn.circleContent
 
 
         }
-        if (finalConn.target.bracket === '(') {
-            formulaLine = formulaLine + finalConn.target.bracket
+        /*         if (finalConn.target.bracket === '(') {
+                    formulaLine = formulaLine + finalConn.target.bracket
+        
+                } */
+        //finalConn寻找每个做括号
+        if (finalConn.target.bracket) {
+            for (const char of finalConn.target.bracket) {
+                if (char === '(') {
+                    formulaLine = formulaLine + char
+
+                }
+            }
+        }
+        if (finalConn.target.type === 'function') {
+            formulaLine = formulaLine + finalConn.target.value + `(${finalConn.target.users.join(', ')})`
+        }
+        else {
+            formulaLine = formulaLine + finalConn.target.value.username
 
         }
-        formulaLine = formulaLine + finalConn.target.value.username
-        if (finalConn.target.bracket === ')') {
-            formulaLine = formulaLine + finalConn.target.bracket
+        /*         if (finalConn.target.bracket === ')') {
+                    formulaLine = formulaLine + finalConn.target.bracket
+        
+                } */
+        //finalConn寻找每个右括号
+        if (finalConn.target.bracket) {
+            for (const char of finalConn.target.bracket) {
+                if (char === ')') {
+                    formulaLine = formulaLine + char
 
+                }
+            }
         }
+        formulaLine = formulaLine.replace(/%c/g, "");
         groupedConnections.value.push(formulaLine)
     })
 
@@ -1419,15 +1697,21 @@ const drawCanvas = () => {
             }
             // 如果组件有括号，则在组件外部绘制括号并突出显示
             if (component.bracket) {
-                ctx.value.font = '20px Arial bold'; // 更大的字体
+                let leftCount = 0, rightCount = 0;
                 ctx.value.fillStyle = 'red'; // 突出的颜色
                 ctx.value.textAlign = 'center';
                 ctx.value.textBaseline = 'middle';
-
-                if (component.bracket === '(') {
-                    ctx.value.fillText(component.bracket, component.x - 15, component.y + component.height / 2); // 左侧括号
-                } else if (component.bracket === ')') {
-                    ctx.value.fillText(component.bracket, component.x + component.width + 15, component.y + component.height / 2); // 右侧括号
+                for (const char of component.bracket) {
+                    console.log('char', char);
+                    if (char === '(') {
+                        ctx.value.font = `${20 + leftCount * 4}px Arial bold`; // 更大的字体
+                        ctx.value.fillText(char, component.x - 15 - 15 * leftCount, component.y + component.height / 2); // 左侧括号
+                        leftCount++;
+                    } else if (char === ')') {
+                        ctx.value.font = `${20 + rightCount * 4}px Arial bold`; // 更大的字体
+                        ctx.value.fillText(char, component.x + component.width + 15 + 15 * rightCount, component.y + component.height / 2); // 右侧括号
+                        rightCount++;
+                    }
                 }
             }
         } else if (component.type === 'operators') {
@@ -1450,6 +1734,73 @@ const drawCanvas = () => {
 
 
 
+        } else if (component.type === 'function') {
+            // 绘制 function 形状
+
+            const circleRadius = 25; // 圆的半径
+            // 动态计算矩形宽度和文本
+            const userText = component.users.length > 0
+                ? `( ${component.users.join(', ')} )`
+                : "请将用户拖拽至此"; // 动态提示文本
+            ctx.value.font = '14px Arial'; // 设置字体
+
+            const rectWidth = Math.max(ctx.value.measureText(userText).width + 20, 140); // 确保宽度准确
+            const rectHeight = 40; // 矩形高度
+            // 绘制圆形
+            ctx.value.beginPath();
+            ctx.value.arc(component.x + circleRadius, component.y + circleRadius, circleRadius, 0, 2 * Math.PI);
+            ctx.value.fillStyle = '#add8e6';
+            ctx.value.fill();
+            ctx.value.strokeStyle = '#4682b4';
+            ctx.value.stroke();
+
+            // 绘制圆内的文本
+            ctx.value.font = '16px Arial';
+            ctx.value.fillStyle = 'black';
+            ctx.value.textAlign = 'center';
+            ctx.value.textBaseline = 'middle';
+            ctx.value.fillText(component.value, component.x + circleRadius, component.y + circleRadius);
+
+            // 绘制矩形
+            const rectX = component.x + circleRadius * 2;
+            const rectY = component.y + (circleRadius - rectHeight / 2);
+            ctx.value.fillStyle = '#f0f8ff';
+            ctx.value.fillRect(rectX, rectY, rectWidth, rectHeight);
+            ctx.value.strokeRect(rectX, rectY, rectWidth, rectHeight);
+
+            // 绘制矩形内的用户值
+            ctx.value.fillStyle = component.users.length > 0 ? 'black' : 'gray'; // 提示文本为灰色
+            ctx.value.font = component.users.length > 0 ? '14px Arial' : 'italic 14px Arial'; // 提示文本为斜体
+            ctx.value.textAlign = 'left';
+            if (component.users.length === 0) {
+                ctx.value.fillText(userText, rectX + 10, rectY + rectHeight / 2);
+
+
+            }
+            else {
+                drawUserTextWithColor(ctx.value, userText, rectX + 10, rectY + rectHeight / 2)
+
+            }
+            component.width = circleRadius * 2 + rectWidth; // 包括圆形和矩形的总宽度
+            component.height = Math.max(circleRadius * 2, rectHeight); // 确保高度为圆形或矩形中较大的那个
+            if (component.bracket) {
+                let leftCount = 0, rightCount = 0;
+                ctx.value.fillStyle = 'red'; // 突出的颜色
+                ctx.value.textAlign = 'center';
+                ctx.value.textBaseline = 'middle';
+                for (const char of component.bracket) {
+                    console.log('char', char);
+                    if (char === '(') {
+                        ctx.value.font = `${20 + leftCount * 4}px Arial bold`; // 更大的字体
+                        ctx.value.fillText(char, component.x - 15 - 15 * leftCount, component.y + component.height / 2); // 左侧括号
+                        leftCount++;
+                    } else if (char === ')') {
+                        ctx.value.font = `${20 + rightCount * 4}px Arial bold`; // 更大的字体
+                        ctx.value.fillText(char, component.x + component.width + 15 + 15 * rightCount, component.y + component.height / 2); // 右侧括号
+                        rightCount++;
+                    }
+                }
+            }
         }
         // 如果该组件被选中，绘制选中框
         /*         if (selectedComponent.value === component) {
@@ -1471,6 +1822,32 @@ const drawCanvas = () => {
     }
 
 
+};
+
+const drawUserTextWithColor = (ctx, userText, x, y) => {
+    const fontSize = 14; // 字体大小
+    ctx.font = `${fontSize}px Arial`; // 设置字体
+    ctx.textBaseline = 'middle'; // 文本基线
+
+    let currentX = x; // 起始 X 坐标
+
+    // 正则表达式匹配 `%c` 标记
+    const parts = userText.split(/(%c.*?%c)/);
+
+    parts.forEach((part) => {
+        if (part.startsWith('%c') && part.endsWith('%c')) {
+            // 红色部分：去掉 %c 标记
+            const text = part.slice(2, -2);
+            ctx.fillStyle = 'red'; // 设置字体颜色为红色
+            ctx.fillText(text, currentX, y); // 绘制文本
+            currentX += ctx.measureText(text).width; // 更新 X 坐标
+        } else {
+            // 普通文本
+            ctx.fillStyle = 'black'; // 设置字体颜色为黑色
+            ctx.fillText(part, currentX, y); // 绘制文本
+            currentX += ctx.measureText(part).width; // 更新 X 坐标
+        }
+    });
 };
 // 绘制线段
 const drawLine = (ctx, x1, y1, x2, y2) => {
@@ -1543,7 +1920,7 @@ const onCanvasClick = (event) => {
     });
 
     // 如果处于连接模式，且点击了第二个组件，则完成连接
-    if (isConnecting.value && clickedComponent && clickedComponent.type == 'users') {
+    if (isConnecting.value && clickedComponent && (clickedComponent.type == 'users' || clickedComponent.type == 'function')) {
         completeConnection(clickedComponent);
 
     } else if (isCtrlOrCmdPressed.value && selectedComponent.value && clickedComponent && clickedComponent.type === 'users') {
@@ -1562,7 +1939,6 @@ const onCanvasClick = (event) => {
 };
 
 const onMouseDown = (event) => {
-
     if (canvasRef.value) {
         const canvasRect = canvasRef.value.getBoundingClientRect();
         const x = event.clientX - canvasRect.left;
@@ -1579,6 +1955,8 @@ const onMouseDown = (event) => {
             );
 
             if (selectedComponent.value) {
+                currentX.value = selectedComponent.value.x
+                currentY.value = selectedComponent.value.y
                 // 记录鼠标与组件的偏移量
                 dragOffset.value.x = x - selectedComponent.value.x;
                 dragOffset.value.y = y - selectedComponent.value.y;
@@ -1590,6 +1968,7 @@ const onMouseDown = (event) => {
 
 };
 const onMouseMove = (event) => {
+    console.log();
     const canvasRect = canvasRef.value.getBoundingClientRect();
     const x = event.clientX - canvasRect.left;
     const y = event.clientY - canvasRect.top;
@@ -1625,27 +2004,6 @@ const onMouseMove = (event) => {
     }
     drawCanvas();
 };
-const replaceTemplateWithUser = (userComponent, templateComponent) => {
-    // 移动用户组件到模板组件的位置和尺寸
-    userComponent.x = templateComponent.x;
-    userComponent.y = templateComponent.y;
-    userComponent.width = templateComponent.width;
-    userComponent.height = templateComponent.height;
-    userComponent.bracket = templateComponent.bracket;
-
-    // 从组件列表中删除模板组件
-    componentsOnCanvas.value = componentsOnCanvas.value.filter(component => component !== templateComponent);
-
-    // 更新连接关系
-    connections.value.forEach(conn => {
-        if (conn.source === templateComponent) {
-            conn.source = userComponent;
-        }
-        if (conn.target === templateComponent) {
-            conn.target = userComponent;
-        }
-    });
-};
 const onMouseUp = (event) => {
     // 判断是否是没有 template 属性的用户组件
     if (isDragging.value && selectedComponent && selectedComponent.value.type === 'users' && !selectedComponent.value.template) {
@@ -1654,6 +2012,7 @@ const onMouseUp = (event) => {
         // 遍历组件，查找接近的模板组件
         componentsOnCanvas.value.forEach(component => {
             if (component !== selectedComponent.value && component.type === 'users' && component.template) {
+
                 // 计算拖拽组件与模板组件的距离
                 const distance = Math.sqrt(Math.pow(selectedComponent.value.x - component.x, 2) + Math.pow(selectedComponent.value.y - component.y, 2));
                 if (distance < 50) { // 距离阈值，可以根据需要调整
@@ -1674,13 +2033,132 @@ const onMouseUp = (event) => {
             return; // 退出函数
         }
     }
+    if (isDragging.value && selectedComponent && selectedComponent.value.type === 'users') {
+        // 判断是否拖拽到了 function 类型的组件附近
+        let targetFunctionComponent = null;
+
+        componentsOnCanvas.value.forEach(component => {
+
+            if (component.type === 'function') {
+
+                if (selectedComponent.value.x >= component.x - 30 &&
+                    selectedComponent.value.x <= component.x + component.width + 30 &&
+                    selectedComponent.value.y >= component.y - 30 &&
+                    selectedComponent.value.y <= component.y + component.height + 30) { // 距离阈值，可以根据需要调整
+                    targetFunctionComponent = component;
+                }
+            }
+        });
+
+        if (targetFunctionComponent) {
+            // 将用户名加入到 function 组件的 users 列表中
+            targetFunctionComponent.users.push(selectedComponent.value.value.username);
+            connections.value.forEach((conn, index) => {
+                if (conn.source === selectedComponent.value) {
+                    conn.source = targetFunctionComponent
+                }
+                if (conn.target === selectedComponent.value) {
+                    conn.target = targetFunctionComponent
+                }
+                if (conn.source === conn.target) {
+                    connections.value.splice(index, 1)
+                    ElMessage({ type: 'warning', message: '由于拖拽形成环路，连线删除' })
+                }
+            })
+            componentsOnCanvas.value = componentsOnCanvas.value.filter(component => component !== selectedComponent.value);
+
+            // 停止拖拽状态
+            isDragging.value = false;
+
+            // 重新绘制画布
+            drawCanvas();
+            return; // 退出函数
+        }
+    }
+    if (isDragging.value && selectedComponent && selectedComponent.value.type === 'function') {
 
 
+
+        // 判断是否拖拽到了 function 类型的组件附近
+        let targetFunctionComponent = null;
+
+        componentsOnCanvas.value.forEach(component => {
+            if (component.type === 'function' && component != selectedComponent.value) {
+
+                if (selectedComponent.value.x >= component.x - 30 &&
+                    selectedComponent.value.x <= component.x + component.width + 30 &&
+                    selectedComponent.value.y >= component.y - 30 &&
+                    selectedComponent.value.y <= component.y + component.height + 30) {
+                    if (selectedComponent.value.users.length === 0) {
+                        ElMessage({ type: 'warning', message: '请至少在函数中填入一个用户' })
+                        selectedComponent.value.x = currentX.value
+                        selectedComponent.value.y = currentY.value
+                        isDragging.value = false;
+                        return
+                    }// 距离阈值，可以根据需要调整
+                    targetFunctionComponent = component;
+                }
+            }
+        });
+
+        if (targetFunctionComponent) {
+            // 将用户名加入到 function 组件的 users 列表中
+            // 将当前函数转为字符串并存储到目标函数的 users 中
+            const userText = `( ${selectedComponent.value.users.join(', ')} )`;
+            const funcToStr = `%c${selectedComponent.value.value}%c${userText}`;
+            targetFunctionComponent.users.push(funcToStr);
+            connections.value.forEach((conn, index) => {
+
+                if (conn.source === selectedComponent.value) {
+                    console.log('conn.source', conn.source);
+                    conn.source = targetFunctionComponent
+                }
+                if (conn.target === selectedComponent.value) {
+                    console.log('conn.target', conn.target);
+
+                    conn.target = targetFunctionComponent
+                }
+                if (conn.source === conn.target) {
+
+                    connections.value.splice(index, 1)
+                    ElMessage({ type: 'warning', message: '由于拖拽形成环路，连线删除' })
+                }
+            })
+            componentsOnCanvas.value = componentsOnCanvas.value.filter(component => component !== selectedComponent.value);
+
+            // 停止拖拽状态
+            isDragging.value = false;
+
+            // 重新绘制画布
+            drawCanvas();
+            return; // 退出函数
+        }
+    }
     if (isDragging.value && selectedComponent.value && selectedComponent.value.type === 'operators') {
         const canvasRect = canvasRef.value.getBoundingClientRect();
         const x = event.clientX - canvasRect.left;
         const y = event.clientY - canvasRect.top;
+        if (selectedComponent.value.value === '(' || selectedComponent.value.value === ')') {
+            // 检测是否将括号拖拽到用户组件上
+            let isBracketAdded = false;
+            componentsOnCanvas.value.forEach((component) => {
+                if ((component.type === 'users' || component.type === 'function') && x >= component.x && x <= component.x + component.width && y >= component.y && y <= component.y + component.height) {
 
+                    component.bracket = selectedComponent.value.value + component.bracket;  // 给组件增加括号
+                    console.log('component.bracket', component.bracket);
+                    isBracketAdded = true
+
+                }
+            });
+            // 如果括号成功添加，重新绘制画布并返回
+            if (isBracketAdded) {
+                componentsOnCanvas.value = componentsOnCanvas.value.filter(component => component !== selectedComponent.value);
+                isDragging.value = false; // 停止拖拽状态
+
+                drawCanvas(); // 重新绘制画布，显示更新后的用户组件
+                return;
+            }
+        }
         // 遍历所有连接线，检查是否将操作符拖拽到圆形按钮上
         connections.value.forEach(conn => {
             const { startPoint, endPoint } = findClosestEdgePoints(conn.source, conn.target);
@@ -1703,6 +2181,28 @@ const onMouseUp = (event) => {
     drawCanvas(); // 重新绘制画布
 
 };
+const replaceTemplateWithUser = (userComponent, templateComponent) => {
+    // 移动用户组件到模板组件的位置和尺寸
+    userComponent.x = templateComponent.x;
+    userComponent.y = templateComponent.y;
+    userComponent.width = templateComponent.width;
+    userComponent.height = templateComponent.height;
+    userComponent.bracket = templateComponent.bracket;
+
+    // 从组件列表中删除模板组件
+    componentsOnCanvas.value = componentsOnCanvas.value.filter(component => component !== templateComponent);
+
+    // 更新连接关系
+    connections.value.forEach(conn => {
+        if (conn.source === templateComponent) {
+            conn.source = userComponent;
+        }
+        if (conn.target === templateComponent) {
+            conn.target = userComponent;
+        }
+    });
+};
+
 // 绘制更加圆润的矩形
 const drawRoundedRect = (ctx, x, y, width, height, radius) => {
     ctx.value.beginPath();
@@ -1747,7 +2247,7 @@ const setCanvasResolution = () => {
 
 
 const getUsers = async () => {
-    axios.post('https://120.48.18.15:7000/api/getAllUser', queryFormUsers.value
+    await axios.post('/api/getAllUserPublic', queryFormUsers.value
         , {
             headers: {
                 Authorization: localStorage.getItem('token'),
@@ -1817,22 +2317,47 @@ const handleNodeInfo = () => {
 }
 
 const handleConfirm = () => {
+    dialogLoading.value = true
+    let inValidFlag = false
+    groupedConnections.value.forEach(formula => {
+        if (!validateFormula(formula)
+        ) {
+            inValidFlag = true
+        }
+    })
+    if (inValidFlag === true) {
+        ElMessage({ type: 'error', message: '存在不合法公式！' })
+        dialogLoading.value = false
+        return
+    }
+    /*     groupConnections.value.forEach(formula => {
+            if (formula)
+         }) */
+    dialogLoading.value = false
     groupedFormulaUsers.value = [];
+    // 初始化 uniqueGroupUserList
+    uniqueGroupUserList.value = [];
     taskInfoDialogVisible.value = true;
+    console.log('selsectedUserList.value', selsectedUserList.value);
     groupedConnections.value.forEach((formula) => {
         const formulaUsersInfo = [];
-        const userLists = extractUsernames(formula);
+        const userLists = extractUsernamesWithFunc(formula);
+
+        console.log('userLists', userLists);
+
         userLists.forEach((username) => {
-            const user = currentUsersList.value.find((userItem) => userItem.username === username);
+            const user = selsectedUserList.value.find((userItem) => userItem.username === username);
+
             if (user) {
                 formulaUsersInfo.push({
-                    username: user.username,
+                    isReceiveResult: false,
+                    nodeName: user.username,
                     nodeAddress: user.nodeIp + ':' + user.nodePort,
                     requireDataDescription: '',
                 });
             } else {
                 // 如果用户未找到，可以添加提示或处理逻辑
-                console.warn(`用户 ${username} 未找到`);
+                ElMessage({ type: 'error', message: `未找到名为${username}的用户，请重试` });
             }
         });
         groupedFormulaUsers.value.push({
@@ -1840,7 +2365,39 @@ const handleConfirm = () => {
             users: formulaUsersInfo,
         });
     });
+
+    //生成唯一不存在相同用户名的数组
+    // 遍历 groupedFormulaUsers 中的每个对象
+    uniqueGroupUserList.value = groupedFormulaUsers.value.map(group => {
+        const uniqueUsers = [];
+
+        group.users.forEach(user => {
+            // 检查 uniqueUsers 中是否已存在相同 nodeName 的用户
+            const existingUser = uniqueUsers.find(u => u.nodeName === user.nodeName);
+
+            if (existingUser) {
+                // 如果存在，合并 requireDataDescription
+                if (!Array.isArray(existingUser.requireDataDescription)) {
+                    existingUser.requireDataDescription = [existingUser.requireDataDescription];
+                }
+                existingUser.requireDataDescription.push(user.requireDataDescription);
+            } else {
+                // 如果不存在，直接添加用户对象，但 requireDataDescription 初始化为数组
+                uniqueUsers.push({
+                    ...user,
+                    requireDataDescription: [user.requireDataDescription]
+                });
+            }
+        });
+
+        return {
+            formula: group.formula,
+            users: uniqueUsers
+        };
+    });
+
     console.log('groupedFormulaUsers.value', groupedFormulaUsers.value);
+    console.log('uniqueGroupUserList.value', uniqueGroupUserList.value);
 };
 const submitTaskInfo = async () => {
     if (!taskInfoForm.value.taskName || !taskInfoForm.value.taskType) {
@@ -1856,7 +2413,31 @@ const submitTaskInfo = async () => {
     sendForm.value.taskDescription = taskInfoForm.value.taskDescription
     // 关闭对话框
     taskInfoDialogVisible.value = false;
-
+    // 遍历 groupedFormulaUsers 的每个元素
+    /*     groupedFormulaUsers.value.forEach((group, groupIndex) => {
+            // 找到 uniqueGroupUserList 中对应的对象
+            const uniqueGroup = uniqueGroupUserList.value.find(
+                unique => unique.formula === group.formula
+            );
+    
+            // 如果找到对应的 uniqueGroup
+            if (uniqueGroup) {
+                // 遍历当前 group 中的 users 数组
+                group.users.forEach((user, userIndex) => {
+                    // 根据 nodeName 在 uniqueGroup.users 中找到对应的 user
+                    const uniqueUser = uniqueGroup.users.find(
+                        uniqueUser => uniqueUser.nodeName === user.nodeName
+                    );
+    
+                    // 如果找到对应的 uniqueUser，将 uniqueUser 的值赋给当前 user
+                    if (uniqueUser) {
+                        group.users[userIndex] = { ...uniqueUser };
+                    }
+                });
+            }
+        }); */
+    mergeUniqueToGrouped()
+    console.log('groupedFormulaUsers.value', groupedFormulaUsers.value);
     //针对每个公式，进行共同的参数复制
     groupedFormulaUsers.value.forEach((formulaInfo, index) => {
         const taskParams = ref({
@@ -1864,15 +2445,14 @@ const submitTaskInfo = async () => {
             taskName: '',
             mapString: '',
             nodeNum: 0,
-            ndeAddressList: [],
-            requireDataDescriptionList: [],
+            nodeInfoList: [],
         })
         taskParams.value.taskId = sendForm.value.taskUuid
         taskParams.value.mapString = formulaInfo.formula
         taskParams.value.nodeNum = formulaInfo.users.length
         formulaInfo.users.forEach((user) => {
-            taskParams.value.ndeAddressList.push(user.nodeAddress)
-            taskParams.value.requireDataDescriptionList.push(user.requireDataDescription)
+            taskParams.value.nodeInfoList.push(user)
+            console.log(user);
         })
         //针对用户的选择，以及公式对taskName参数进行操作
         if (taskInfoForm.value.taskType === 'carbon') {
@@ -1884,6 +2464,7 @@ const submitTaskInfo = async () => {
             }
         }
         //将taskParams.value推入到数组中
+        console.log('taskParams.value', taskParams.value);
         sendForm.value.taskParams.push(taskParams.value)
     })
     //在只有一个公式的情况之下，taskParams目前还是一个对象需重新赋值
@@ -1891,7 +2472,9 @@ const submitTaskInfo = async () => {
     delete sendForm.value.taskParams
     sendForm.value.taskParams = taskParams
     console.log(' sendForm.value', sendForm.value);
-
+    sendForm.value.taskParams.nodeInfoList.forEach(node => {
+        node.uuid = SomeTools.guid()
+    })
     //发起任务
     await axios.post(
         '/api/MPC/createTask', sendForm.value
@@ -1915,6 +2498,13 @@ const submitTaskInfo = async () => {
                     type: 'error',
                     message: '任务发起失败'
                 })
+            }
+            sendForm.value = {
+                taskName: '',
+                taskUuid: '',
+                createTime: '',
+                taskDescription: '',
+                taskParams: [],
             }
         })
 
@@ -1982,17 +2572,30 @@ onBeforeUnmount(() => {
 /* 左侧侧边栏 */
 .sidebar.left {
     padding: 0;
-
+    width: 15%;
     background-color: #f5f5f5;
     display: flex;
     flex-direction: column;
 }
 
 .sidebar.right {
+    width: 18%;
     padding: 8px;
-    overflow-y: auto;
-
+    align-items: center
 }
+
+.search-user {
+    box-sizing: border-box;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: center;
+    height: 10%;
+}
+
 
 /* 侧边栏的每个部分 */
 .sidebar-section {
@@ -2005,6 +2608,12 @@ onBeforeUnmount(() => {
     height: 33.3%;
     padding: 10px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.user-container {
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: 85%;
 }
 
 .sidebar-section:last-child {
@@ -2030,11 +2639,13 @@ onBeforeUnmount(() => {
     font-size: 16px;
     text-align: center;
     margin-bottom: 10px;
+
 }
 
 /* 不同部分的背景色 */
 .operators-section {
     width: 100%;
+
     background-color: #e8f4fc;
 }
 
@@ -2132,14 +2743,11 @@ onBeforeUnmount(() => {
 /* 右侧侧边栏 */
 .sidebar.right {
     padding: 8px;
-    overflow-y: auto;
     background-color: #f5f5f5;
-
     justify-content: center;
     justify-items: center;
     align-items: center;
-
-
+    overflow-y: auto;
 }
 
 /* 用户列表项样式 */
@@ -2203,14 +2811,13 @@ onBeforeUnmount(() => {
 }
 
 .operator-item {
-    width: 48%;
-    /* 每行显示两个，占据一半宽度 */
-    margin-bottom: 10px;
-    padding: 10px;
+    width: 30%;
+
+    box-sizing: border-box;
     background-color: #e6f7ff;
     border: 1px solid #91d5ff;
     text-align: center;
-    font-size: 24px;
+    font-size: 18px;
     cursor: pointer;
     box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
     /* 添加阴影使其更美观 */
@@ -2471,11 +3078,11 @@ canvas.connecting {
 
 
 .desc-input {
-    width: 120px;
-    border: none;
-    background-color: transparent;
-    text-overflow: ellipsis;
-
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 5px;
 }
 
 .search-input {
@@ -2614,5 +3221,12 @@ canvas.connecting {
         color: black;
     }
 
+}
+
+.add-template-but svg {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
 }
 </style>

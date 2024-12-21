@@ -1,9 +1,13 @@
 import { fileURLToPath, URL } from 'node:url'
-import requireTransform from 'vite-plugin-require-transform';
+
 import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import commonjs from '@rollup/plugin-commonjs';//引入commojs
+import vue from '@vitejs/plugin-vue';
+import vueJsx from '@vitejs/plugin-vue-jsx';
+import commonjs from '@rollup/plugin-commonjs';
+import requireTransform from 'vite-plugin-require-transform';
 import legacy from '@vitejs/plugin-legacy';
+import { viteCommonjs } from '@originjs/vite-plugin-commonjs'
+
 
 //import GlobalsPolyfills from '@esbuild-plugins/node-globals-polyfill'
 //const GlobalsPolyfills = require("@esbuild-plugins/node-globals-polyfill").default
@@ -21,17 +25,23 @@ import { Agent, get } from 'node:http' */
 const userStore = useUserStore()
 const url = useUserStore.userInfo.nodeIp + ':' + useUserStore.userInfo.nodePort */
 console.log('vite')
+
+
 export default defineConfig({
   plugins: [
     commonjs(),
-    vue(),
-    requireTransform({ fileRegex: /.js$|.vue$/ }),
+    vue(), // Vue 插件，确保这个放在第一个
+
+    vueJsx(), // 启用 JSX 支持
+    requireTransform({ fileRegex: /.js$|.vue$/ }), // 处理 require 语法
     legacy({
-      targets: ['defaults', 'not IE 11']
-    })
+      targets: ['defaults', 'not IE 11'] // 针对旧浏览器的兼容性
+    }),
+
+
   ],
   optimizeDeps: {
-    include: ['axios', 'some-package', 'another-package'],
+    include: ['axios', 'some-package', 'another-package', '@monaco-editor/vue'],
     /*     esbuildOptions: {
           define: {
             global: 'globalThis',
@@ -52,11 +62,18 @@ export default defineConfig({
       util: 'util',
       https: 'agent-base',
       zlib: 'browserify-zlib',
+
     }
   },
   server: {
 
     proxy: {
+      /* '/api/getAllUserPublic': {
+        secure: false, // 如果目标服务器是 HTTPS 且没有有效证书，设置为 false
+        target: 'https://120.48.18.15:7000',
+        changeOrigin: true, // 更改请求的来源，使代理服务器的主机头与目标相匹配
+        rewrite: (path) => path.replace(/^\/api\/getAllUser/, '/api/getAllUserPublic') // 保持目标路径一致
+      }, */
       '/api': {
         secure: false,
         target: 'http://127.0.0.1:4523/m1/4311960-3954686-default/api',
@@ -64,12 +81,12 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, '')
       },
 
-      /*       '/api': {
-              secure: false,
-              target: 'https://120.48.18.15:8000/api',
-              changeOrigin: true,
-              rewrite: (path) => path.replace(/^\/api/, '')
-            }, */
+      /* '/api': {
+        secure: false,
+        target: 'https://120.48.18.15:8000/api',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }, */
       '/littleApi': {
         secure: false,
         //target: `https://${localStorage.getItem('nodeIp')}:${localStorage.getItem('nodePort')}/api `,

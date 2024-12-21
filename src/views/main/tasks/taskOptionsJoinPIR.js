@@ -7,18 +7,18 @@ export const taskOptionsJoin = [
     {
         label: '任务Uuid',
         prop: 'taskUuid',
-        width: 150,
+        width: 'auto',
 
     },
     {
         label: '任务名称',
         prop: 'taskName',
-        width: 120,
+        width: 'auto',
     },
     {
         label: '任务描述',
         prop: 'taskDescription',
-        width: 160,
+        width: 'auto',
     },
     {
         label: '状态',
@@ -28,7 +28,7 @@ export const taskOptionsJoin = [
     {
         label: '上传路径',
         prop: 'path',
-        width: 160,
+        width: 'auto',
     },
     /*     {
             label: '数据描述',

@@ -38,14 +38,25 @@ export function extractOperators(formula) {
   // 定义操作符字符，包括全角和半角
   const operatorChars = ['+', '＋', '-', '－', '*', '＊', '/', '／'];
 
-  // 创建一个正则表达式，用于匹配所有操作符字符
-  const pattern = new RegExp('[' + operatorChars.join('') + ']', 'g');
+  // 使用正则表达式匹配所有操作符
+  const pattern = new RegExp(`[${operatorChars.join('')}]`, 'g');
 
   // 使用正则表达式匹配所有操作符
-  const operators = formula.match(pattern);
+  const operators = formula.match(pattern) || [];
 
-  // 如果没有找到操作符，返回空数组，否则返回操作符数组
-  return operators || [];
+  // 输出每个操作符的 Unicode 编码以调试
+  console.log('Extracted operators:');
+  operators.forEach((op, index) => {
+    console.log(`Operator ${index + 1}: '${op}' (Unicode: ${op.charCodeAt(0)})`);
+  });
+
+  // 输出公式中的每个字符及其 Unicode 编码
+  console.log('Formula characters and their Unicode codes:');
+  for (let i = 0; i < formula.length; i++) {
+    console.log(`Character: '${formula[i]}' (Unicode: ${formula.charCodeAt(i)})`);
+  }
+
+  return operators;
 }
 //判断两个表达式是否是一个模版
 export function compareOperatorSequences(expr1, expr2) {
@@ -84,24 +95,123 @@ export function compareOperatorSequences(expr1, expr2) {
   return true;
 }
 
+//判断是否是合法公式
+export function isValidFormula(formula) {
+  const stack = [];
+  const validCharacters = /^[A-Za-z0-9+\-*/()]+$/;
+
+  // 检查是否只包含合法字符
+  if (!validCharacters.test(formula)) {
+    return false;
+  }
+
+  for (let i = 0; i < formula.length; i++) {
+    const char = formula[i];
+
+    // 如果是左括号，则压入栈中
+    if (char === '(') {
+      stack.push(char);
+    }
+    // 如果是右括号，则检查栈顶是否有匹配的左括号
+    else if (char === ')') {
+      if (stack.length === 0 || stack.pop() !== '(') {
+        return false;
+      }
+    }
+  }
+
+  // 如果栈为空，则说明所有括号匹配，公式合法
+  return stack.length === 0;
+}
+//提取包含min，max的用户名
+export function extractUsernamesWithFunc(formula) {
+  // 定义正则表达式，匹配非操作符和括号的部分
+  const pattern = /[^+\-*/(),\s]+/g;
+
+  // 使用正则表达式匹配所有的用户名部分
+  const matches = formula.match(pattern);
+
+  // 如果没有匹配结果，则返回空数组
+  if (!matches) {
+    return [];
+  }
+
+  return matches.filter(name => !['Min', 'Max'].includes(name));
+}
+//带有min，max的公式的合法性的判断
+export function validateFormula(formula) {
+  // 替换中文括号为英文括号，方便处理
+  const normalizedFormula = formula.replace(/（/g, '(').replace(/）/g, ')');
+
+  // 验证括号配对
+  let stack = [];
+  for (let char of normalizedFormula) {
+    if (char === '(') {
+      stack.push(char);
+    } else if (char === ')') {
+      if (stack.length === 0) {
+        return false; // 未闭合的右括号
+      }
+      stack.pop();
+    }
+  }
+  if (stack.length !== 0) {
+    return false; // 存在未闭合的左括号
+  }
+
+  // 验证操作符规则
+  const operatorPattern = /[+\-*/]/;
+  const tokenPattern = /[^+\-*/(),\s]+/g; // 提取非操作符、括号、逗号的部分
+
+  // 拆分公式
+  let tokens = normalizedFormula.split(/([\+\-\*/\(\)])/).filter(t => t.trim() !== '');
+
+  // 检查开头或结尾不能是操作符
+  if (operatorPattern.test(tokens[0]) || operatorPattern.test(tokens[tokens.length - 1])) {
+    return false;
+  }
+
+  // 检查操作符不能连续出现
+  for (let i = 0; i < tokens.length - 1; i++) {
+    if (operatorPattern.test(tokens[i]) && operatorPattern.test(tokens[i + 1])) {
+      return false;
+    }
+  }
+
+  // 验证嵌套规则
+  const functionPattern = /(Min|Max)\s*\(/;
+  let parenthesesStack = [];
+  for (let token of tokens) {
+    if (functionPattern.test(token)) {
+      parenthesesStack.push(token);
+    } else if (token === ')') {
+      if (parenthesesStack.length > 0) {
+        parenthesesStack.pop();
+      }
+    }
+  }
+
+  return parenthesesStack.length === 0;
+}
+
+
 
 //提取表达式的用户名
 export function extractUsernames(formula) {
-  // 定义操作符字符，包括全角和半角
-  const operatorChars = ['+', '＋', '-', '－', '*', '＊', '/', '／', '(', '（', ')', '）', ' ', '　'];
+  // 定义操作符字符，包括加减乘除和左右括号
+  const operatorChars = ['+', '-', '*', '/', '(', ')'];
 
-  // 创建一个正则表达式，匹配所有操作符字符
-  const pattern = new RegExp('[' + operatorChars.join('') + ']+', 'g');
+  // 使用正则表达式匹配所有操作符字符，并忽略两边的空格
+  const pattern = new RegExp(`\\s*[\\${operatorChars.join('\\')}]+\\s*`, 'g');
 
   // 使用正则表达式分割字符串
   const tokens = formula.split(pattern);
 
   // 过滤掉空字符串，得到用户名列表
-  const usernames = tokens.filter(token => token !== '');
+  const usernames = tokens.filter(token => token.trim() !== '');
 
   return usernames;
 }
-
 export function extractUsernamesAndBracket(formula) {
   // 定义操作符字符，包括全角和半角
   const operatorChars = ['+', '＋', '-', '－', '*', '＊', '/', '／', ' ', '　'];
@@ -109,8 +219,8 @@ export function extractUsernamesAndBracket(formula) {
   // 初始化结果数组，用来存储每个用户和括号信息
   let result = [];
 
-  // 用栈来记录左括号的出现位置
-  let leftBracketStack = [];
+  // 当前括号累积信息
+  let bracketStack = '';
 
   // 当前用户名
   let username = '';
@@ -121,40 +231,39 @@ export function extractUsernamesAndBracket(formula) {
     // 如果是操作符，则把之前累积的用户名加入结果
     if (operatorChars.includes(char)) {
       if (username !== '') {
-        result.push({ username, bracket: '' });
+        result.push({ username, bracket: bracketStack });
         username = '';
+        bracketStack = ''; // 清空括号栈
       }
+      continue; // 跳过操作符
     }
 
-    // 如果是左括号 '(' 或 '（'，将其位置压入栈
+    // 如果是左括号 '(' 或 '（'，将其添加到括号栈中
     if (char === '(' || char === '（') {
-      leftBracketStack.push(result.length); // 记录括号前的用户名索引
+      bracketStack += char;
+      continue; // 继续下一轮循环
     }
 
-    // 如果是右括号 ')' 或 '）'
+    // 如果是右括号 ')' 或 '）'，将其添加到括号栈中
     if (char === ')' || char === '）') {
-      const leftIndex = leftBracketStack.pop(); // 找到与之匹配的左括号
-      if (leftIndex !== undefined && result[leftIndex]) {
-        result[leftIndex].bracket = '('; // 给相应的用户名加上左括号
-      }
-      if (username !== '') {
-        result.push({ username, bracket: ')' }); // 当前用户名加上右括号
-        username = '';
-      } else if (result.length > 0) {
-        result[result.length - 1].bracket = ')'; // 最后一个用户加上右括号
-      }
+      bracketStack += char;
+      continue; // 继续下一轮循环
     }
 
-    // 如果是字母，继续累积用户名
-    if (!operatorChars.includes(char) && char !== '(' && char !== ')' && char !== '（' && char !== '）') {
+    // 如果是字母或其他字符（非操作符、非括号），继续累积用户名
+    if (!operatorChars.includes(char)) {
       username += char;
     }
   }
 
   // 处理最后一个累积的用户名
   if (username !== '') {
-    result.push({ username, bracket: '' });
+    result.push({ username, bracket: bracketStack });
   }
 
-  return result;
+  // 将结果转化为指定格式，拼装字符串
+  return result.map(item => ({
+    username: item.username,
+    bracket: item.bracket
+  }));
 }

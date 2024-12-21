@@ -1,2 +1,2 @@
 import { ref } from 'vue'
-export const isCollapse = ref(true)
+export const isCollapse = ref(false)

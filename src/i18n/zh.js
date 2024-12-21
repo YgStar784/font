@@ -24,6 +24,12 @@ export default {
     '/datasourceinfoAQ': '数据源-安全多方计算',
     '/taskinfo': '任务信息',
     '/mpc': '安全多方计算',
+    '/arithmetic': '四则运算',
+    '/stealthquery': '匿踪查询',
+    'privateSetIntersection': '隐私求交',
+    '/fl': '联邦学习',
+    '/federatedLearning': '联邦建模',
+    '/flPredict': '联邦预测',
     '/mpcplayerinfo': '安全多方计算-任务信息'
   },
   login: {

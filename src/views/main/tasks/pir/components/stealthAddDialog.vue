@@ -161,7 +161,7 @@ const handleClose = () => {
 }
 
 const getNodeInfo = async () => {
-    axios.post('https://120.48.18.15:7000/api/getAllUser', queryFormUser.value
+    axios.post('/api/getAllUserPublic', queryFormUser.value
         , {
             headers: {
                 Authorization: localStorage.getItem('token'),

@@ -1,6 +1,6 @@
 <template>
-    <el-dialog title="画布展示" @open="handleOpen" v-model="canvasShowDialogValue" height="500" @close="handleClose"
-        width="1000" append-to-body>
+    <el-dialog title="画布展示" v-model="canvasShowDialogValue" @open="OpenLoading" height="500" @close="handleClose"
+        width="1000" append-to-body destroy-on-close>
         <!-- 画布区域 -->
         <!--         <div class="icon-description">
             <el-tag closable> <span>
@@ -18,18 +18,104 @@
 
 
         </div>
+
+        <div class="formulaShow">
+            <n-card hoverable>
+
+                <n-skeleton v-if="loading" text :repeat="2" />
+                <template v-else>
+                    <n-space>
+                        <n-tag :bordered="false" type="info">
+                            公 式
+                        </n-tag>
+                        <n-tag :bordered="false">
+                            {{ formulaInfo.mapString }}
+                        </n-tag>
+                    </n-space>
+                </template>
+            </n-card>
+            <n-spin :show="loadingState">
+
+                <n-card style="margin-top: 10px;" hoverable>
+                    <template #header>
+                        <n-gradient-text type="info">
+                            状 态
+                        </n-gradient-text>
+                    </template>
+                    <n-skeleton v-if="loadingState" text :repeat="3" />
+
+
+                    <n-space v-else vertical style="width: 100%;">
+                        <n-descriptions label-placement="left" style="width: 100%;" :column="4">
+
+
+                            <n-descriptions-item v-for="(user, index) in userStateList" :key="index">
+                                <template #label>
+                                    <n-gradient-text :gradient="{
+                                        from: 'rgb(85, 85, 85)',
+                                        to: 'rgb(170, 170, 170)',
+                                    }">
+                                        {{ user.value }}
+                                    </n-gradient-text>
+
+                                </template>
+                                <n-badge v-if="user.state === 0" :value="user.stateCount" type="success">
+
+                                    <n-tag type="success">
+                                        已确认
+                                        <template #icon>
+                                            <n-icon :component="CheckmarkCircle" />
+                                        </template>
+                                    </n-tag>
+
+                                </n-badge>
+                                <n-badge v-if="user.state === 1" :value="user.stateCount" type="error">
+
+                                    <n-tag type="error">
+                                        已拒绝
+                                        <template #icon>
+                                            <n-icon :component="ErrorFilled" />
+                                        </template>
+                                    </n-tag>
+
+                                </n-badge>
+                                <n-badge v-if="user.state === 2" :value="user.stateCount" type="warning">
+
+
+                                    <n-tag type="warning">
+                                        待处理
+                                        <template #icon>
+                                            <n-icon :component="ChartPie" />
+                                        </template>
+                                    </n-tag>
+
+                                </n-badge>
+                            </n-descriptions-item>
+
+                        </n-descriptions>
+                    </n-space>
+
+                </n-card>
+            </n-spin>
+
+        </div>
     </el-dialog>
 </template>
 
 <script setup>
+import { NTag, NBadge, NSpin, NIcon, NSpace, NCard, NSkeleton, NDescriptions, NDescriptionsItem, NGradientText } from 'naive-ui'
 import { ref, nextTick, onMounted } from 'vue';
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
-import { extractUsernamesAndBracket, extractOperators } from '@/utils/utils'
+import { extractUsernamesAndBracket, extractOperators, extractUsernames } from '@/utils/utils'
 import { log } from 'mathjs';
+import { CheckmarkCircle } from '@vicons/ionicons5'
+import { ErrorFilled, ChartPie } from '@vicons/carbon';
+const uniqueBracketRec = ref([])
 const ctx = ref(null); // 保存 Canvas 的上下文
 const formulaInfo = ref({})
 const componentsOnCanvas = ref([])
+const loadingState = ref(true)
 const props = defineProps({
     taskInfo: {
         type: Object,
@@ -37,7 +123,15 @@ const props = defineProps({
         required: true
     }
 })
+const userStateList = ref([])
+const queryFormUsers = ref({
+    queryName: '',
+    page: 1,
+    pageSize: 8,
+})
+const usersList = ref()
 const isRealSourceConn = ref([])
+const currentUserInfo = ref({})
 const svg = `
         <path class="path" d="
           M 30 15
@@ -61,6 +155,7 @@ const userIcon = new Image()
 const waitIcon = new Image()
 const SuccessIcon = new Image()
 const RefuseIcon = new Image()
+const mapStringState = ref([])
 waitIcon.src = require('@/assets/iconInCanvas/daichuli.png')
 userIcon.src = require('@/assets/iconInCanvas/User.png')
 SuccessIcon.src = require('@/assets/iconInCanvas/Success.png')
@@ -69,39 +164,145 @@ const emits = defineEmits(['update:modelValue'])
 const handleClose = () => {
     emits('update:modelValue', false)
 }
+const getUser = async (username) => {
+    queryFormUsers.value.queryName = username
+    await axios.post('https://120.48.18.15:7000/api/getAllUser', queryFormUsers.value
+        , {
+            headers: {
+                Authorization: localStorage.getItem('token'),
+            }
+        }).then(res => {
+            // console.log(res)
+            if (res.data.code === 1000) {
+                currentUserInfo.value = res.data.data.userList[0]
+                // console.log(currentUsersList.value);
+            }
+            else {
+                const msg = res.message
+                ElMessage({
+                    type: 'error',
+                    message: msg,
+                })
+            }
+        })
 
 
+}
+const generateFormula = (formulaStr, playerState) => {
+    let userCount = 0; // 用于计数操作数
+    let i = 0; // 初始化索引
 
+    // 定义操作符字符（包括全角和半角）
+    const operatorChars = ['+', '＋', '-', '－', '*', '＊', '/', '／'];
+    const whitespaceChars = [' '];
 
-const generateFormula = (formulaStr, x, y) => {
-
-    let userCount = 0, i
-    for (i = 0; i < formulaStr.length; i++) {
-
-        console.log(formulaStr[i]); // 输出每个字符
-        if (alphabet.value.includes(formulaStr[i])) {
+    while (i < formulaStr.length) {
+        // 检查当前字符是否为用户名的起始字符（字母或汉字）
+        if (!operatorChars.includes(formulaStr[i]) && formulaStr[i] !== '(' && formulaStr[i] !== ')') {
             userCount++;
-            if (i === 0 || i === formulaStr.length - 1) {
-                let bracketEl = { rank: userCount, value: formulaStr[i], bracket: '' }
-                bracketRec.value.push(bracketEl)
+            let leftBracket = '';
+            let rightBracket = '';
+            let username = '';
 
+            // 向左查找所有左括号
+            let leftIndex = i - 1;
+            while (leftIndex >= 0 && formulaStr[leftIndex] === '(') {
+                leftBracket = '(' + leftBracket;
+                leftIndex--;
             }
-            else if (formulaStr[i - 1] === '(') {
-                let bracketEl = { rank: userCount, value: formulaStr[i], bracket: '(' }
-                bracketRec.value.push(bracketEl)
-            } else if (formulaStr[i + 1] === ')') {
-                let bracketEl = { rank: userCount, value: formulaStr[i], bracket: ')' }
-                bracketRec.value.push(bracketEl)
 
-            } else {
-                let bracketEl = { rank: userCount, value: formulaStr[i], bracket: '' }
-                bracketRec.value.push(bracketEl)
+            // 提取用户名，直到遇到操作符、括号或空格为止
+            while (
+                i < formulaStr.length &&
+                !operatorChars.includes(formulaStr[i]) &&
+                formulaStr[i] !== '(' &&
+                formulaStr[i] !== ')' &&
+                !whitespaceChars.includes(formulaStr[i])
+            ) {
+                username += formulaStr[i];
+                i++;
             }
-        } else if (formulaStr[i] != ' ' && formulaStr[i] != '(' && formulaStr[i] != ')') {
-            formulaOp.value.push(formulaStr[i])
+
+            // 向右查找所有右括号
+            let rightIndex = i;
+            while (rightIndex < formulaStr.length && formulaStr[rightIndex] === ')') {
+                rightBracket += ')';
+                rightIndex++;
+            }
+
+            // 将找到的括号与当前用户名拼接
+            let bracketEl = {
+                rank: userCount,
+                value: username, // 记录完整的用户名
+                bracket: leftBracket + rightBracket, // 记录左右括号
+                state: playerState[userCount - 1],
+            };
+
+            // 将结果推入 bracketRec 数组
+            bracketRec.value.push(bracketEl);
+
+            // 跳过已遍历的右括号
+            i = rightIndex;
+        } else if (operatorChars.includes(formulaStr[i])) {
+            // 检查是否为操作符
+            formulaOp.value.push(formulaStr[i]);
+            i++;
+        } else {
+            // 跳过空格和括号
+            i++;
         }
     }
-}
+    uniqueBracketRec.value = bracketRec.value.reduce((acc, curr) => {
+        // 查找是否已有相同的 value
+        const existing = acc.find(item => item.value === curr.value);
+
+        if (existing) {
+            // 如果已存在，合并 state 到 state 数组
+            existing.state.push(curr.state);
+        } else {
+            // 如果不存在，创建一个新的对象并添加到 acc
+            acc.push({
+                rank: curr.rank,
+                value: curr.value,
+                state: [curr.state]
+            });
+        }
+
+        return acc;
+    }, []);
+    userStateList.value = uniqueBracketRec.value.map(item => {
+        const stateCounts = { 0: 0, 1: 0, 2: 0 };
+
+        // 统计 state 中 0, 1, 2 的数量
+        item.state.forEach(s => {
+            if (s in stateCounts) {
+                stateCounts[s]++;
+            }
+        });
+
+        let state;
+        let stateCount;
+
+        if (stateCounts[1] > 0) {
+            state = 1;
+            stateCount = stateCounts[1];
+        } else if (stateCounts[2] > 0) {
+            state = 2;
+            stateCount = stateCounts[2];
+        } else {
+            state = 0;
+            stateCount = stateCounts[0];
+        }
+
+        return {
+            rank: item.rank,
+            value: item.value,
+            state,
+            stateCount
+        };
+    });
+    console.log('userStateList.value', userStateList.value);
+};
 const formulaUsersDraw = (formulaStr, x, y) => {
     let first = {
         type: 'users',
@@ -138,7 +339,7 @@ const formulaUsersDraw = (formulaStr, x, y) => {
             x += 140
         }
     })
-    console.log('formula', bracketRec.value, formulaOp.value, connections.value);
+    console.log('bracketRec.value', bracketRec.value);
     bracketRec.value = []
     formulaOp.value = []
 
@@ -152,7 +353,7 @@ const resetCanvasSize = () => {
     canvas.width = defaultCanvasWidth;
     canvas.height = defaultCanvasHeight;
 };
-const generateComponentsOnCanvas = (users, operators, playerState) => {
+const generateComponentsOnCanvas = (playerState) => {
     const canvas = canvasRef.value;
     const initialCanvasWidth = canvas.width; // 初始画布宽度
     const initialCanvasHeight = canvas.height; // 初始画布高度
@@ -167,17 +368,19 @@ const generateComponentsOnCanvas = (users, operators, playerState) => {
     console.log('x,y', x, y);
     let maxX = 0; // 记录组件的最大X值
     let maxY = 0; // 记录组件的最大Y值
-
+    bracketRec.value = []
+    formulaOp.value = []
+    generateFormula(formulaInfo.value.mapString, playerState)
     componentsOnCanvas.value = []; // 清空画布上的组件
 
     let first = {
         type: 'users',
-        value: { username: users[0].username },
+        value: { username: bracketRec.value[0].value },
         x,
         y,
         width: componentWidth,
         height: componentHeight,
-        bracket: users[0].bracket,
+        bracket: bracketRec.value[0].bracket,
         state: playerState[0],
     };
     componentsOnCanvas.value.push(first);
@@ -191,17 +394,17 @@ const generateComponentsOnCanvas = (users, operators, playerState) => {
     maxX = Math.max(maxX, x + componentWidth);
     maxY = Math.max(maxY, y + componentHeight);
 
-    for (let i = 1; i < users.length; i++) {
+    for (let i = 1; i < bracketRec.value.length; i++) {
         x += componentWidth + 120;
 
         let userComponent = {
             type: 'users',
-            value: { username: users[i].username },
+            value: { username: bracketRec.value[i].value },
             x,
             y,
             width: componentWidth,
             height: componentHeight,
-            bracket: users[i].bracket,
+            bracket: bracketRec.value[i].bracket,
             state: playerState[i],
         };
         componentsOnCanvas.value.push(userComponent);
@@ -210,7 +413,7 @@ const generateComponentsOnCanvas = (users, operators, playerState) => {
         connections.value.push({
             source: prevComponent,
             target: userComponent,
-            circleContent: operators[i - 1], // 操作符与用户之间
+            circleContent: formulaOp.value[i - 1], // 操作符与用户之间
             connId: connId++,
         });
 
@@ -256,19 +459,47 @@ const getDistance = (point1, point2) => {
     return Math.sqrt(Math.pow(point2.x - point1.x, 2) + Math.pow(point2.y - point1.y, 2));
 };
 
+
+const mapState = async () => {
+    let mapIndex;
+    mapStringState.value = []
+    /*     const usersList = extractUsernames(formulaInfo.value.mapString);
+    
+        for (const username of usersList) {
+            await getUser(username); // 等待 getUser 执行完毕
+            console.log('currentUserInfo.value.nodeIp', currentUserInfo.value);
+    
+            mapIndex = formulaInfo.value.playerIpList.findIndex((item) => item === currentUserInfo.value.nodeIp);
+            console.log('mapIndex', mapIndex);
+            console.log('formulaInfo.value.playerStateList[mapIndex]', formulaInfo.value.playerStateList[mapIndex]);
+    
+            mapStringState.value.push(formulaInfo.value.playerStateList[mapIndex]);
+        }
+    
+        console.log('mapStringState', mapStringState.value); */
+    mapStringState.value = formulaInfo.value.playerStateList
+};
 const handleOpen = async () => {
     console.log('open');
     //获取任务的公式以及用户状态
     await getMapAndState()
     console.log(window.devicePixelRatio);
+    await mapState();
     await nextTick(); // 确保 DOM 更新完成
     console.log(formulaInfo.value);
     //获取表达式的用户名与括号
+
     const users = extractUsernamesAndBracket(formulaInfo.value.mapString)
     const operators = extractOperators(formulaInfo.value.mapString)
     resetCanvasSize()
+    console.log('mapStringState.value', mapStringState.value);
+    generateComponentsOnCanvas(mapStringState.value)
 
-    generateComponentsOnCanvas(users, operators, formulaInfo.value.playerState)
+    console.log('bracketRec', bracketRec.value);
+    uniqueBracketRec.value = []
+    uniqueBracketRec.value = bracketRec.value.filter((item, index, self) =>
+        index === self.findIndex((t) => t.value === item.value)
+    );
     console.log(users, operators);
     //获取表达式的操作符
 
@@ -278,6 +509,8 @@ const handleOpen = async () => {
     } else {
         console.error('Canvas element not found');
     }
+
+
     loading.value = false
 }
 const getMapAndState = async () => {
@@ -547,18 +780,24 @@ const drawCanvas = () => {
 
         }
         // 如果组件有括号，则在组件外部绘制括号并突出显示
+        // 如果组件有括号，则在组件外部绘制括号并突出显示
         if (component.bracket) {
-            ctx.value.font = '20px Arial bold'; // 更大的字体
+            let leftCount = 0, rightCount = 0;
             ctx.value.fillStyle = 'red'; // 突出的颜色
             ctx.value.textAlign = 'center';
             ctx.value.textBaseline = 'middle';
-
-            if (component.bracket === '(') {
-                ctx.value.fillText(component.bracket, component.x - 15, component.y + component.height / 2); // 左侧括号
-            } else if (component.bracket === ')') {
-                ctx.value.fillText(component.bracket, component.x + component.width + 15, component.y + component.height / 2); // 右侧括号
+            for (const char of component.bracket) {
+                console.log('char', char);
+                if (char === '(') {
+                    ctx.value.font = `${20 + leftCount * 4}px Arial bold`; // 更大的字体
+                    ctx.value.fillText(char, component.x - 15 - 15 * leftCount, component.y + component.height / 2); // 左侧括号
+                    leftCount++;
+                } else if (char === ')') {
+                    ctx.value.font = `${20 + rightCount * 4}px Arial bold`; // 更大的字体
+                    ctx.value.fillText(char, component.x + component.width + 15 + 15 * rightCount, component.y + component.height / 2); // 右侧括号
+                    rightCount++;
+                }
             }
-
         } else if (component.type === 'operators') {
 
             // 绘制圆形边框
@@ -590,7 +829,23 @@ const drawCanvas = () => {
 
 
 };
-
+const OpenLoading = async () => {
+    loading.value = true
+    loadingState.value = true
+    // 等待 DOM 渲染完成后再关闭加载状态
+    await handleOpen()
+    nextTick(() => {
+        loadingState.value = false;
+    })
+}
+/* onMounted(() => {
+    loading.value = true
+    loadingState.value = true
+    // 等待 DOM 渲染完成后再关闭加载状态
+    nextTick(() => {
+        loadingState.value = false;
+    })
+}) */
 </script>
 
 <style lang="scss" scoped>
@@ -636,5 +891,10 @@ const drawCanvas = () => {
 
 .icon-description img {
     vertical-align: middle;
+}
+
+.formulaShow {
+    width: 100%;
+    margin-top: 20px;
 }
 </style>

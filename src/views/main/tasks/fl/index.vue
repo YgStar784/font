@@ -1,529 +1,800 @@
 <template>
-    <el-card>
-        <el-row :gutter="20" class="header">
-            <el-col :span="7">
-                <h3>
-                    联邦学习
-                </h3>
-            </el-col>
-        </el-row>
-        <el-steps :active="currentSteps" align-center class="steps">
-            <el-step title="基本信息" />
-            <el-step title="配置数据源" />
-            <el-step title="字段对齐" />
-            <el-step title="流程编排" />
-            <el-step title="模型输出" />
+    <div class="index" v-if="showCreate === 'false'">
 
-        </el-steps>
-        <div class="container">
-            <el-form :model="form" ref="formRef" label-position="left" label-width="auto" title="联邦学习"
-                style=" max-width: 700px">
-                <el-form-item v-show="currentSteps === 0" label="名称:" prop="pipeName">
-                    <el-input placeholder="请输入流水线名称" style="width: 600px" v-model="form.pipeName" />
-                </el-form-item>
-                <el-form-item v-show="currentSteps === 0" label="算法类型:" prop="algorithmCode">
-                    <el-input style="width: 100px" v-model="form.algorithmCode" />
-                </el-form-item>
-                <el-form-item v-show="currentSteps === 0" label="数据源个数:" prop="participants">
-                    <el-input-number v-model="form.participants" :min="1" :max="10" @change="handleNumChange" />
-                </el-form-item>
-                <el-form-item v-show="currentSteps === 1" :label='`数据源-${index1 + 1} :`'
-                    v-for="(node, index1) in form.nodeList" prop="nodeinfo" :key="index1">
-                    <el-row>
-                        <el-col :span="8">
-                            <el-select style="width: 150px;" v-model="node.nodeUUid" :key="index1" placeholder="请选择节点名称"
-                                @click="getNodeInfo(index1)" @change="handleUserSelectChange">
-                                <el-option v-for="(user, index2) in node.node_options"
-                                    :label='`${user.username}:${user.nodeIp}`' :value="user.id" :key="index2">
-                                </el-option>
-                                <div class="pagination-container">
-                                    <el-pagination v-model:current-page="queryFormUser.page"
-                                        v-model:page-size="queryFormUser.pageSize" :small="small" :disabled="disabled"
-                                        :background="background" layout="prev, pager, next" :total="usertotal"
-                                        @size-change="handleSizeChange" @current-change="handleCurrentChange" />
-                                </div>
-                            </el-select>
-                        </el-col>
-                        <el-col :span="8" style="margin-left: 30px;width:400px">
-                            <el-select v-model="node.dataSourceInfo" :key="index1" placeholder="请选择数据源"
-                                @click="getUserDataSource(index1)" @change="handleDataSourceSelectChange">
-                                <el-option v-for="(data, index3) in node.dataSource_options"
-                                    :label='`${data.dataSourceName}:${data.dataSourceUuid}`' :value="data"
-                                    :key="index3">
-                                </el-option>
-                                <div class="pagination-container">
-                                    <el-pagination v-model:current-page="queryFormDataSource.page"
-                                        v-model:page-size="queryFormDataSource.pageSize" :small="small"
-                                        :disabled="disabled" :background="background" layout="prev, pager, next"
-                                        :total="datasourcetotal" @size-change="handleSizeChange"
-                                        @current-change="handleCurrentChange" />
-                                </div>
-                            </el-select>
-                        </el-col>
-                    </el-row>
-                    <el-col>
-                        <el-checkbox-group :key="index1" v-model="node.dataSourceFields" size="large">
+        <div class="flex justify-between items-center flex-wrap">
+            <el-card>
+                <template #header>
+                    <div class="card-header">
+                        <span>
+                            <h2>
+                                联邦建模
+                            </h2>
+                        </span>
+                    </div>
+                </template>
 
-                            <el-checkbox v-for="(item, index4) in node.column_options" style="padding-top: 30px"
-                                :key="index4" :value="item"
-                                @change="handleBox(form.nodeList[index1].checkedList[index4], item, index1, index4)">
-                                {{ item }}
+                <el-tabs v-model="activeName" type="card" @tab-click="handleClick">
 
-                                <el-tag v-if="handleState(item, index1)" type="danger">{{
-                                    form.nodeList[index1].dataSourceFields.indexOf(item) + 1 }}</el-tag>
+                    <el-tab-pane class="demo-tabs" name="myUpload">
+                        <template #label>
+                            我发起的
+                            <span>&nbsp;({{ mytotal }})&nbsp;</span>
+                            <!--                         <el-badge v-if="begin != 0" type="warning" :value="begin" size="mini"></el-badge>
+ --> </template>
+                        <div style="max-width: 1250px;">
+                            <el-row :gutter="20" type="flex" jusify="end" style="text-align: right;" class="header">
 
-                            </el-checkbox>
-                        </el-checkbox-group>
+                                <el-col :span="7">
+                                    <el-input placeholder="请输入搜索的任务名称" clearable
+                                        v-model="queryForm.queryName"></el-input></el-col>
+                                <el-button type="primary" :icon="Search" @click="getMyTask">{{ $t('table.search')
+                                    }}</el-button>
 
-                    </el-col>
-                </el-form-item>
-                <el-form-item v-show="currentSteps === 1" label="误报率:" prop="pipeName">
-                    <el-input-number v-model="form.falseAlarmParams" :precision="1" :step="0.1" :min="0.1" :max="1" />
-                </el-form-item>
-                <div v-show="currentSteps === 2">
-                    <el-form-item v-for="(item, index6) in standArry" :label='`标准字段 - ${index6 + 1}`'>
-                        <el-select style="width: 150px;" v-model="form.samplealignParams[index6].standDataSourceField"
-                            :key="index1" placeholder="请选择节点名称">
-                            <el-option v-for="(stand, index7) in item"
-                                :label='`${stand.standDataSourceField}:${stand.standDataSourceUuid}`'
-                                :value="stand.standDataSourceField" :key="index7">
-                            </el-option>
-                        </el-select>
-                    </el-form-item>
-                </div>
-            </el-form>
+                                <el-button type="primary" @click="createTask">
+                                    <el-icon style="margin-right: 10px">
+                                        <el-icon>
+                                            <Plus />
+                                        </el-icon>
+                                    </el-icon>联邦建模
+                                </el-button>
+
+
+                            </el-row>
+                            <el-table :data="tableData" stripe
+                                :header-cell-style="{ background: '#f5f7fa', color: '#606266', border: 0 }"
+                                :cell-style="cellStyleMy" style="max-width: 1250px;" border>
+                                <el-table-column type="index" label="序号" width="60">
+                                    <template #default="{ $index }">
+                                        {{ (queryForm.page - 1) * queryForm.pageSize + $index + 1 }}
+                                    </template>
+                                </el-table-column>
+
+                                <el-table-column :width="item.width" :prop="item.prop" :label="item.label"
+                                    v-for="(item, index) in taskOptions" :key="index">
+                                    <template v-slot="{ row }" align="center" v-if="item.label === '任务状态'">
+                                        <template v-if="row.taskState === 0">
+                                            <a-badge status="success" text="成功" />
+
+                                        </template>
+                                        <template v-else-if="row.taskState === 1">
+                                            <a-badge status="error" text="失败" />
+
+                                        </template>
+                                        <template v-else-if="row.taskState === 2">
+                                            <a-badge status="processing" text="进行中" /> </template>
+                                        <template v-else-if="row.taskState === 3">
+                                            <a-badge state="processing" color="purple" text="待确认" />
+                                        </template>
+                                        <template v-else-if="row.taskState === 4" effect="dark">
+                                            <a-badge status="processing" color="yellow" text="可进行" />
+                                        </template>
+                                        <template v-else-if="row.taskState === 5" effect="dark">
+                                            <a-badge color="magenta" text="拒绝"></a-badge>
+                                        </template>
+                                    </template>
+                                    <template v-slot="{ row }" align="center" v-if="item.label === '任务类型'">
+                                        <template v-if="row.tasktype">
+                                            <span>匿踪查询</span>
+                                        </template>
+
+                                    </template>
+                                </el-table-column>
+                                <el-table-column fixed="right" label="操作" width="160px" align="center">
+                                    <template #default="{ row }">
+
+                                        <div class="op-but">
+                                            <el-tooltip effect="light" content="参与者信息" placement="top">
+                                                <el-button type="success" size="small" icon="Search" label="查看"
+                                                    @click="handlePlayerInfo(row)" />
+                                            </el-tooltip>
+
+                                            <el-tooltip v-if="row.taskState === 4" effect="light" content="开始进行"
+                                                placement="top">
+                                                <el-button type="warning" size="small" icon="CaretRight" label="进行"
+                                                    @click="handleBegin(row)" />
+                                            </el-tooltip>
+                                            <el-tooltip effect="light" content="训练结果" placement="top">
+                                                <el-button size="small" icon="PictureRounded" label="训练结果"
+                                                    @click="showTrainResult(row)" />
+                                            </el-tooltip>
+
+                                            <el-tooltip v-if="row.taskState === 0" effect="light" content="模型下载"
+                                                placement="top">
+                                                <el-button type="warning" size="small" icon="Coin" label="模型下载"
+                                                    @click="handleDownLoad(row, 1)" />
+                                            </el-tooltip>
+                                            <el-tooltip v-if="row.taskState === 0" effect="light" content="数据下载"
+                                                placement="top">
+                                                <el-button type="danger" size="small" icon="DocumentCopy" label="数据下载"
+                                                    @click="handleDownLoad(row, 2)" />
+                                            </el-tooltip>
+
+
+                                        </div>
+
+                                        <!--     <el-button type="primary" size="small" :icon="Edit" @click="handleDialogValue(row)">编辑</el-button>
+                    <el-button type="danger" size="small" :icon="Delete" @click="delUser(row)">删除</el-button> -->
+                                    </template>
+                                </el-table-column>
+
+                            </el-table>
+                            <div class="pagination-container">
+                                <el-pagination v-model:current-page="queryForm.page"
+                                    v-model:page-size="queryForm.pageSize" :page-sizes="[2, 5, 10, 15]" :small="small"
+                                    :disabled="disabled" :background="background"
+                                    layout="mytotal, sizes, prev, pager, next, jumper" :total="mytotal"
+                                    @size-change="handleSizeChange" @current-change="handleCurrentChange" />
+                            </div>
+                        </div>
+                    </el-tab-pane>
+                    <el-tab-pane label="我参与的">
+                        <template #label>
+                            我参与的
+                            <span>&nbsp;({{ jointotal }})&nbsp;</span>
+                            <!--                         <el-badge v-if="pending != 0" :value="pending" size="mini"></el-badge>
+ --> </template>
+                        <el-row :gutter="20" type="flex" jusify="end" style="text-align: right;" class="header">
+
+                            <el-col :span="7">
+                                <el-input placeholder="请输入搜索的任务名称" clearable
+                                    v-model="queryFormJoin.queryName"></el-input></el-col>
+                            <el-button type="primary" :icon="Search" @click="getMyTaskJoin">{{ $t('table.search')
+                                }}</el-button>
+
+
+
+                        </el-row>
+                        <el-table :data="tableDataJoin" stripe
+                            :header-cell-style="{ background: '#f5f7fa', color: '#606266', border: 0 }"
+                            style="max-width: 1250px;" :cell-style="cellStyleJoin" :row-class-name="tableRowClassName"
+                            border>
+                            <el-table-column type="index" label="序号" width="60">
+                                <template #default="{ $index }">
+                                    {{ (queryForm.page - 1) * queryForm.pageSize + $index + 1 }}
+                                </template>
+                            </el-table-column>
+
+                            <el-table-column :width="item.width" :prop="item.prop" :label="item.label"
+                                v-for="(item, index) in taskOptionsJoin" :key="index">
+                                <template v-slot="{ row }" align="center" v-if="item.label === '编号'" v-show="false">
+
+                                </template>
+                                <template v-slot="{ row }" align="center" v-if="item.label === '状态'">
+                                    <template v-if="row.state === 0">
+                                        <span class="state accept">已接受</span>
+                                    </template>
+                                    <template v-if="row.state === 1">
+                                        <span class="state reject">已拒绝</span>
+                                    </template>
+                                    <template v-if="row.state === 2">
+                                        <span class="state wait">待确认</span>
+                                    </template>
+                                </template>
+
+                                <template v-slot="{ row }" align="center" style="background-color: #79bbff;"
+                                    v-if="item.label === '状态' && item.state === 2">
+                                </template>
+                                <template v-slot="{ row }" align="center" v-if="item.label === '结果接收'">
+                                    <template v-if="row.isReceiveResult === 0">
+                                        <el-icon>
+                                            <Close />
+                                        </el-icon></template>
+                                    <template v-else-if="row.isReceiveResult === 1 || row.isReceiveResult === 2">
+                                        <el-icon>
+                                            <Check />
+                                        </el-icon></template>
+
+                                </template>
+                            </el-table-column>
+                            <el-table-column fixed="right" label="操作" width="160px" align="center">
+                                <template #default="{ row }">
+                                    <el-tooltip class="item" effect="light" content="处理" placement="top">
+                                        <el-button type="primary" size="small" @click="handleAccept(row)"><el-icon>
+                                                <Edit />
+                                            </el-icon></el-button>
+                                    </el-tooltip>
+                                    <el-button v-if="row.state === 0" type="success"
+                                        @click="showUploadDataSourceInfo(row)" size="small">数据源</el-button>
+                                    <el-button v-if="row.state === 1" type="danger" size="small">已拒绝</el-button>
+                                    <el-button v-if="row.state === 2" type="success" size="small"
+                                        @click="handleAccept(row)">接受</el-button>
+                                    <el-button v-if="row.state === 2" type="danger" size="small"
+                                        @click="handleReject(row)">拒绝</el-button>
+
+                                    <!--     <el-button type="primary" size="small" :icon="Edit" @click="handleDialogValue(row)">编辑</el-button>
+                    <el-button type="danger" size="small" :icon="Delete" @click="delUser(row)">删除</el-button> -->
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                        <div class="pagination-container" style="max-width: 1250px;">
+                            <el-pagination v-model:current-page="queryFormJoin.page"
+                                v-model:page-size="queryFormJoin.pageSize" :page-sizes="[2, 5, 10, 15]" :small="small"
+                                :disabled="disabled" :background="background"
+                                layout="mytotal, sizes, prev, pager, next, jumper" :total="jointotal"
+                                @size-change="handleSizeChangeJoin" @current-change="handleCurrentChangeJoin" />
+                        </div>
+                    </el-tab-pane>
+
+                </el-tabs>
+
+            </el-card>
+
+
         </div>
-        <div class="butContainer">
-            <el-button v-show="currentSteps != 0" @click="preStep">上一步</el-button>
-            <el-button v-show="currentSteps != 4" type="primary" style="margin-left: 50px"
-                @click="nextStep">下一步</el-button>
-            <el-button v-show="currentSteps === 4" type="primary" style="margin-left: 50px"
-                @click="onSubmit">提交</el-button>
-        </div>
-    </el-card>
+        <HandleTaskInvitationsDialog v-model="dialogVisibleAccept" :taskInfo="taskInfo" @initMyJoin="getMyTaskJoin">
+        </HandleTaskInvitationsDialog>
+        <PlayerInfoDialog v-model="dialogVisiblePlayer" :taskName="taskName" :taskUuid="taskUuid"
+            :createTime="createTime" :taskDescription="taskDescription"></PlayerInfoDialog>
+        <TrainResultDialog v-model="resultDialogValue" :taskUuid="taskUuid"></TrainResultDialog>
+    </div>
+    <div class="create" v-if="showCreate === 'true'">
 
+        <transition name="fade" mode="out-in">
+
+            <RouterView />
+
+        </transition>
+
+    </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { taskOptions } from '../taskOptions'
+import { taskOptionsJoin } from '../taskOptionsJoinFL'
+import { isCreate, showCreate } from './isCreate.js'
+import { NButton } from 'naive-ui'
+import { useRouter, useRoute } from 'vue-router'
+import { onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getUsersAPI, getlUserIpAPI } from '@/apis/users';
-import { getFlDataSourceAPI } from '@/apis/dataSource'
-const currentSteps = ref(0)
-const id = ref(0)
-const usertotal = ref(0)
-const datasourcetotal = ref(0)
-//const node_options = ref([])
-const dataSourceName = ref('')
-//const dataSource_options = ref([])
-//const column_options = ref([])
-const indexColumn = ref(0)
-
-const queryFormUser = ref({
+import HandleTaskInvitationsDialog from './components/handleTaskInvitationsDialog.vue'
+import PlayerInfoDialog from './components/playerInfoDialog.vue'
+import TrainResultDialog from './components/showTrainResultDialog.vue'
+import axios from 'axios'
+const taskName = ref('')
+const taskUuid = ref('')
+const createTime = ref('')
+const taskDescription = ref('')
+const router = useRouter()
+const route = useRoute()
+const jointotal = ref(0)
+const mytotal = ref(0)
+const activeName = ref('myUpload')
+const tableDataJoin = ref([])
+const tableData = ref([])
+const dialogVisiblePlayer = ref(false)
+const queryForm = ref({
     queryName: '',
     page: 1,
-    pageSize: 5
+    pageSize: 10
 })
-const UserList = ref([])
-const queryFormDataSource = ref({
+const resultDialogValue = ref(false)
+const begin = ref(0)
+const taskInfo = ref(null)
+const dialogVisibleAccept = ref(false)
+const queryFormJoin = ref({
     queryName: '',
     page: 1,
-    pageSize: 5,
-    targetUserId: 0
+    pageSize: 10
 })
-const sendForm = ref({
-    taskId: '',
-    taskName: '',
-    participants: 0,
-    nodeList: [],
-    standPsiField: []
-})
-const form = ref({
-    algorithmCode: null,
-    pipeName: '',
-    falseAlarmParams: 0.1,
-    participants: 1,
-    nodeList: [{
-        isReceiveResult: false,
-        nodeAddress: '',
-        nodeUUid: null,
-        party: 0,
-        dataSourceUuid: '',
-        dataSourceFields: [],
-        node_options: [],
-        dataSource_options: [],
-        column_options: [],
-        dataSourceInfo: null,
-        columnCh: [],
-        checkedList: []
-    }],
-    standPsiField: [],
-    samplealignParams: [],
-})
-const party = form.value.participants
-const standArry = ref([])
-const rules = ref({
-    task_name: [
-        {
-            required: true,
-            message: '请输入任务名称',
-            trigger: 'blur',
-        }
-    ],
-    participants: [
-        {
-            required: true,
-            message: '请输入参与人数',
-            trigger: 'blur',
-        }
-    ],
-    nodeinfo: [
-        {
-            required: true,
-            trigger: 'blur',
-        }
-    ],
+const pending = ref(0)
+const createTask = () => {
+    // 设置 isCreate 为 true（如果需要）
+    isCreate.value = true;
+    localStorage.setItem('isCreate', 'true')
+    showCreate.value = 'true'
+    // 跳转到 flCreate 界面
+    router.push({ name: 'flCreate' });
 
-})
+}
 
-const nodeListInfo = () => {
-    if (form.value.nodeList.length < form.value.participants) {
-        var i
-        for (i = form.value.nodeList.length; i < form.value.participants; i++) {
-            const nodeInfo = ref({
-                nodeAddress: '',
-                nodeUuid: '',
-                isLocal: false,
-                isReceiveResult: false,
+const getMyTask = async () => {
+
+    axios.post('/api/FL/getMyTrainTask', queryForm.value
+        , {
+            headers: {
+                Authorization: localStorage.getItem('token'),
+            }
+        }).then(res => {
+            console.log(res)
+            if (res.data.code === 1000) {
+                tableData.value = res.data.data.taskList
+                console.log(tableData.value)
+                mytotal.value = res.data.data.total
+            }
+            else {
+                const msg = res.message
+                ElMessage({
+                    type: 'error',
+                    message: msg,
+                })
+            }
+        })
+
+}
+const tableRowClassName = ({ row, rowIndex }) => {
+    if (row.state === 2) {
+        return "waitRow";
+    }
+    return "";
+}
+// 根据data返回的每一行的数据判断,再修改这一行的样式
+const cellStyleJoin = (data) => {
+    if (data.row.state === 2) {
+        return {
+
+            background: "#ecf5ff",
+        };
+    }
+};
+const cellStyleMy = (data) => {
+    if (data.row.taskState === 4) {
+        return {
+
+            background: "#fdf6ec",
+        };
+    }
+};
+
+const handleSizeChange = (pagesize) => {
+    queryForm.value.page = 1
+    queryForm.value.pageSize = pagesize
+    getMyTask()
+}
+const handleCurrentChange = (pageNum) => {
+    queryForm.value.page = pageNum
+    getMyTask()
+}
+const handleSizeChangeJoin = (pagesize) => {
+    queryFormJoin.value.page = 1
+    queryFormJoin.value.pageSize = pagesize
+    getMyTaskJoin()
+}
+const handleCurrentChangeJoin = (pageNum) => {
+    queryFormJoin.value.page = pageNum
+    getMyTaskJoin()
+}
+const handleAccept = (row) => {
+    dialogVisibleAccept.value = true
+    taskInfo.value = row
+
+}
+const handleBegin = async (row) => {
+    /*     queryFormPlayer.value.uuid = row.taskUuid
+        await axios.post('/api/FL/getMyTaskPlayers', queryFormPlayer.value
+            , {
+                headers: {
+                    Authorization: localStorage.getItem('token'),
+                }
+            }).then(res => {
+                console.log(res)
+                if (res.data.code === 1000) {
+                    taskPlayerList.value = res.data.data.taskList
+                    console.log(taskPlayerList.value)
+                    playertotal.value = res.data.data.total
+                }
+                else {
+                    const msg = res.data.message
+                    ElMessage({
+                        type: 'error',
+                        message: msg,
+                    })
+                }
             })
-            form.value.nodeList.push(nodeInfo.value)
-        }
-    }
-    if (form.value.nodeList.length > form.value.participants) {
-        var i
-        for (i = form.value.nodeList.length; i > form.value.participants; i--) {
-            form.value.nodeList.splice(i - 1, 1)
-        }
-    }
-    //console.log(form.value.nodeList.length)
-}
-const preStep = () => {
-    currentSteps.value = currentSteps.value - 1
-}
-const nextStep = () => {
-    currentSteps.value = currentSteps.value + 1
-    if (currentSteps.value === 2) {
-        handleFields()
-    }
-    nodeListInfo()
-}
-const handleNumChange = () => {
+        taskInfo.value = taskPlayerList.value[0]
+        await nextTick()
+        dialogVisibleStartTask.value = true */
 
-    console.log(form.value.nodeList.length, form.value.participants)
-    if (form.value.participants > form.value.nodeList.length) {
-        var i = form.value.nodeList.length
-        for (; i < form.value.participants; i++) {
-            const Node = ref({
-                isReceiveResult: false,
-                nodeAddress: '',
-                nodeUUid: null,
-                party: 0,
-                dataSourceUuid: '',
-                dataSourceFields: [],
-                node_options: [],
-                dataSource_options: [],
-                column_options: [],
-                columnCh: [],
-                checkedList: []
-            })
-            console.log(form.value.nodeList[i - 1].party)
-            Node.value.party = form.value.nodeList[i - 1].party + 1
-            console.log(Node.value.party, i)
-            form.value.nodeList.push(Node.value)
-        }
-    }
-    if (form.value.participants < form.value.nodeList.length) {
-        var i = form.value.nodeList.length
-        // console.log('222222')
-        for (; i >= form.value.participants; i--) {
-            form.value.nodeList.splice(i, 1)
-
-        }
-    }
-    console.log(form.value.nodeList)
-
-    //console.log(form.value.nodeList.length)
+    await axios.post('/api/FL/startTrainTask', { taskUuid: row.taskUuid }
+        , {
+            headers: {
+                Authorization: localStorage.getItem('token'),
+            }
+        }).then(res => {
+            if (res.data.code === 1000) {
+                ElMessage({
+                    type: 'success',
+                    message: '开启任务'
+                })
+                getMyTask()
+            }
+            else {
+                const msg = res.data.message
+                ElMessage({
+                    type: 'error',
+                    message: msg,
+                })
+            }
+        })
 }
 
-const getNodeInfo = async (index) => {
+const showUploadDataSourceInfo = (row) => {
+    dialogVisibleDataSource.value = true
 
-    const res = await getUsersAPI(queryFormUser.value)
+    taskInfo.value = row
+    console.log(taskInfo.value);
+}
+const handleReject = (row) => {
+    centerDialogVisible.value = true
+    taskInfo.value = row
+}
+const handleAddTask = () => {
+    router.replace({ name: 'stealthqueryAdd' })
 
+}
+const getIndex = (index) => {
+    return (queryForm.page - 1) * queryForm.pageSize + index + 1
+}
+const beginTask = async (row) => {
+    await axios.post('/api/PIR/startTask', { taskUuid: row.taskUuid }
+        , {
+            headers: {
+                Authorization: localStorage.getItem('token'),
+            }
+        }).then(res => {
+            if (res.data.code === 1000) {
+                ElMessage({
+                    type: 'success',
+                    message: '开启任务'
+                })
+                getMyTask()
+            }
+            else {
+                const msg = res.data.message
+                ElMessage({
+                    type: 'error',
+                    message: msg,
+                })
+            }
+        })
+}
+const changeState = async (info) => {
+    const state = info.valid
+    idForm.value.id = info.id
+    const res = await changeStateAPI(idForm.value)
     if (res.code === 1000) {
-        form.value.nodeList[index].node_options = []
-
-        form.value.nodeList[index].node_options = res.data.userList
-        UserList.value = res.data.userList
-        console.log(index, form.value.nodeList[index].node_options)
-        usertotal.value = res.data.total
-    }
-}
-const handleBox = (checked, value, nodeIndex, checkedIndex) => {
-    //console.log(checked)
-    form.value.nodeList[nodeIndex].checkedList[checkedIndex] = !checked
-    var i
-    for (i = 0; i < form.value.nodeList[nodeIndex].columnCh.length; i++) {
-        if (value === form.value.nodeList[nodeIndex].columnCh[i].name) {
-            break
+        if (state === 1) {
+            ElMessage({
+                message: "用户冻结成功！",
+                type: 'success'
+            })
+        } else {
+            ElMessage({
+                message: "用户激活成功！",
+                type: 'success'
+            })
         }
-    }
-    if (checked === false) {
-        form.value.nodeList[nodeIndex].columnCh[i].state = true
-        console.log(form.value.nodeList[nodeIndex].columnCh[i].state, form.value.nodeList[nodeIndex].columnCh[i].name)
     } else {
-        form.value.nodeList[nodeIndex].columnCh[i].state = false
-        console.log(form.value.nodeList[nodeIndex].columnCh[i].state, form.value.nodeList[nodeIndex].columnCh[i].name)
-
-
+        ElMessage({
+            message: res.message,
+            type: 'error'
+        })
     }
+    // console.log(res)
+}
+
+const handlePlayerInfo = async (row) => {
+
+    taskName.value = row.taskName
+    taskUuid.value = row.taskUuid
+    createTime.value = row.createTime
+    taskDescription.value = row.taskDescription
+
+    dialogVisiblePlayer.value = true
+
 
 }
-const handleState = (value, index) => {
-    var i
-    for (i = 0; i < form.value.nodeList[index].columnCh.length; i++) {
-        if (value === form.value.nodeList[index].columnCh[i].name) {
-            console.log(form.value.nodeList[index].columnCh[i].state)
-            return form.value.nodeList[index].columnCh[i].state
+const pendingCount = () => {
+    pending.value = 0
+    tableDataJoin.value.forEach((item, index) => {
+        if (item.state === 2) {
+            pending.value = pending.value + 1
         }
-    }
+    })
+    console.log(pending.value)
 }
-const handleUserSelectChange = (value) => {
-    console.log(JSON.stringify(value))
-    id.value = value
-    console.log(id.value)
-}
-const find_userInfo = (id, index) => {
-    const userList = UserList.value
-    var i
-    for (i = 0; i < userList.length; i++) {
-        if (userList[i].id === id) {
-            console.log(userList[i])
-            form.value.nodeList[index].nodeAddress = userList[i].nodeIp
+const beginCount = () => {
+    begin.value = 0
+    tableData.value.forEach((item, index) => {
+        if (item.taskState === 4) {
+            begin.value = begin.value + 1
         }
-    }
+    })
+    console.log(begin.value)
+}
+watch(() => tableDataJoin.value, pendingCount)
+watch(() => tableData.value, beginCount)
 
-}
-const handleFields = () => {
-    standArry.value = [],
-        form.value.samplealignParams = []
-    var i, j
-    for (i = 0; i < form.value.nodeList[0].dataSourceFields.length; i++) {
-        const fields = ref([])
-        const matchInfo = ref([])
-        const standDataSourceField = ref('')
-        const standDataSourceUuid = ref('')
-        for (j = 0; j < form.value.nodeList.length; j++) {
-            if (j >= 1) {
-                const match = ref({
-                    matchDataSourceField: '',
-                    matchDataSourceUuid: ''
-                })
-                matchInfo.value.push(match.value)
-            }
-            fields.value.push({ standDataSourceField: form.value.nodeList[j].dataSourceFields[i], standDataSourceUuid: form.value.nodeList[j].dataSourceInfo.dataSourceUuid })
-
-        }
-        standArry.value.push(fields.value)
-        form.value.samplealignParams.push({ standDataSourceField: standDataSourceField.value, standDataSourceUuid: standDataSourceUuid.value, matchInfo: matchInfo.value })
-        console.log(standArry.value, form.value.samplealignParams)
-    }
-    console.log(standArry.value)
-}
-const getUserDataSource = async (index) => {
-    console.log(index)
-
-    queryFormDataSource.value.targetUserId = form.value.nodeList[index].nodeUUid
-    console.log(queryFormDataSource.value.targetUserId)
-    const res = await getFlDataSourceAPI(queryFormDataSource.value)
-    if (res.code === 1000) {
-        form.value.nodeList[index].dataSource_options = []
-        form.value.nodeList[index].dataSource_options = res.data.dataSourceList
-        datasourcetotal.value = res.data.total
-        console.log(res.data)
-        console.log(datasourcetotal.value)
-        indexColumn.value = index
-        console.log(index, form.value.nodeList[index].dataSource_options)
-    }
-}
-const getDataSource = async (index) => {
-    console.log(index)
-    queryFormDataSource.value.queryName = dataSourceName.value
-    console.log(queryFormDataSource.value.queryName)
-    const res = await getFlDataSourceAPI(queryFormDataSource.value)
-    if (res.code === 1000) {
-        form.value.nodeList[index].column_options = []
-        const str_column = res.data.dataSourceList[0].fieldName
-        console.log(str_column, res.data.fieldName, res)
-        form.value.nodeList[index].column_options = str_column.split(',')
-        console.log(index, form.value.nodeList[index].column_options)
-        var i
-        for (i = 0; i < form.value.nodeList[index].column_options.length; i++) {
-            const ob = ref({
-                name: form.value.nodeList[index].column_options[i],
-                state: false
-            })
-            form.value.nodeList[index].columnCh.push(ob.value)
-            form.value.nodeList[index].checkedList.push(false)
-        }
-        console.log(form.value.nodeList[index].columnCh)
-        if (index === 0) {
-            var i
-            for (i = 0; i < form.value.nodeList[0].column_options.length; i++) {
-                const standField = ref({
-                    standFieldName: '',
-                    type: ''
-                })
-                form.value.standPsiField.push(standField.value)
-            }
-        }
-    }
-
-}
-const handleDataSourceSelectChange = (value) => {
-    console.log(JSON.stringify(value))
-    dataSourceName.value = value.dataSourceName
-    console.log(dataSourceName.value)
-    getDataSource(indexColumn.value)
-    console.log(indexColumn.value)
-}
-
-
-const find_dataSourceInfo = () => {
-    const dataSourceList = dataSource_options.value
-    var i
-    for (i = 0; i < dataSourceList.length; i++) {
-        if (dataSourceList[i].dataSourceName === dataSourceName.value) {
-            console.log(dataSourceList[i])
-            form.value.dataSourceUuid = dataSourceList[i].dataSourceUuid
-            console.log(form.value.dataSourceUuid)
-        }
-    }
-}
-const isRepeat = () => {
-    var i, j
-    for (i = 0; i < form.value.nodeList.length - 1; i++) {
-        const p = form.value.nodeList[i].dataSourceUuid
-        for (j = i + 1; j < form.value.nodeList.length; j++) {
-            const q = form.value.nodeList[j].dataSourceUuid
-            if (p === q) {
-                return true
-            }
-        }
-    }
-    return false
-}
-const handleAddress = () => {
-    var i
-    for (i = 0; i < form.value.nodeList.length; i++) {
-        find_userInfo(form.value.nodeList[i].nodeUUid, i)
-    }
-    console.log(form.value.nodeList)
-}
-const copyForm = () => {
-    var i
-    for (i = 0; i < form.value.nodeList.length; i++) {
-        const nodeInfo = ref(
+const handleDownLoad = async (row, resultType) => {
+    if (resultType === 1) {
+        ElMessageBox.confirm(
+            '确定下载' + row.taskName + '-' + row.taskUuid + '的模型文件吗?',
+            '下载',
             {
-                isReceiveResult: false,
-                nodeAddress: '',
-                nodeUUid: null,
-                party: 0,
-                dataSourceUuid: '',
-                psiField: [],
+                confirmButtonText: '确认',
+                cancelButtonText: '取消',
+
             }
         )
-        nodeInfo.value.nodeAddress = form.value.nodeList[i].nodeAddress
-        nodeInfo.value.nodeUUid = form.value.nodeList[i].nodeUUid
-        nodeInfo.value.party = form.value.nodeList[i].party
-        nodeInfo.value.dataSourceUuid = form.value.nodeList[i].dataSourceInfo.dataSourceUuid
-        nodeInfo.value.psiField = form.value.nodeList[i].dataSourceFields
-        sendForm.value.nodeList.push(nodeInfo.value)
+            .then(async () => {
+                //const res = await downloadResultByUuidAPI({ taskUuid: row.taskUuid })
+                axios.post('/api/FL/downloadTrainResultByUuid', { resultType: 1, taskUuid: row.taskUuid }
+                    , {
+                        headers: {
+                            Authorization: localStorage.getItem('token'),
+                        },
+                        responseType: 'blob',
+                    }).then(res => {
+                        console.log(res)
+                        const data = res.data
+                        if (data.hasOwnProperty('code')) {
+                            ElMessage({
+                                type: 'error',
+                                message: '下载失败'
+                            })
+                        }
+                        else {
+                            const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+                            const objectUrl = URL.createObjectURL(blob) // 创建URL
+                            link.href = objectUrl
+                            link.download = 'psi-' + row.taskUuid// 自定义文件名
+                            link.click() // 下载文件
+                            URL.revokeObjectURL(objectUrl); // 释放内存
+                        }
+                    })
+            })
     }
-}
-const isShowStand = () => {
-    const len = form.value.nodeList[0].dataSourceFields.length
-    if (len != 0) {
-        var i
-        for (i = 1; i < form.value.nodeList.length; i++) {
-            if (len != form.value.nodeList[i].dataSourceFields.length) {
-                return false
+    if (resultType === 2) {
+        ElMessageBox.confirm(
+            '确定下载' + row.taskName + '-' + row.taskUuid + '的数据文件吗?',
+            '下载',
+            {
+                confirmButtonText: '确认',
+                cancelButtonText: '取消',
+
             }
-        }
-        return true
-    }
-    else {
-        return false
+        )
+            .then(async () => {
+                //const res = await downloadResultByUuidAPI({ taskUuid: row.taskUuid })
+                axios.post('/api/FL/downloadTrainResultByUuid', { resultType: 2, taskUuid: row.taskUuid }
+                    , {
+                        headers: {
+                            Authorization: localStorage.getItem('token'),
+                        },
+                        responseType: 'blob',
+                    }).then(res => {
+                        console.log(res)
+                        const data = res.data
+                        if (data.hasOwnProperty('code')) {
+                            ElMessage({
+                                type: 'error',
+                                message: '下载失败'
+                            })
+                        }
+                        else {
+                            const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+                            const objectUrl = URL.createObjectURL(blob) // 创建URL
+                            link.href = objectUrl
+                            link.download = 'psi-' + row.taskUuid// 自定义文件名
+                            link.click() // 下载文件
+                            URL.revokeObjectURL(objectUrl); // 释放内存
+                        }
+                    })
+            })
     }
 }
-const standFieldsCopy = () => {
-    var i
-    for (i = 0; form.value.standPsiField[i].standFieldName != ''; i++) {
-        sendForm.value.standPsiField.push(form.value.standPsiField[i])
+const showTrainResult = async (row) => {
+    taskUuid.value = row.taskUuid
+    resultDialogValue.value = true
+
+}
+/* const sendToOtherFont = async () => {
+    axios.post('http://127.0.0.1:5173/createtask'
+        , queryForm.value
+        , {
+            headers: {
+                Authorization: localStorage.getItem('token'),
+            }
+        }).then(res => {
+            console.log(res)
+            if (res.data.code === 1000) {
+                tableData.value = res.data.data.taskList
+                console.log(tableData.value)
+                mytotal.value = res.data.data.total
+            }
+            else {
+                const msg = res.message
+                ElMessage({
+                    type: 'error',
+                    message: msg,
+                })
+            }
+        })
+} */
+
+const getMyTaskJoin = async () => {
+    await axios.post('/api/FL/getMyTrainTaskInvitations', queryFormJoin.value
+        , {
+            headers: {
+                Authorization: localStorage.getItem('token'),
+            }
+        }).then(res => {
+            console.log(res)
+            if (res.data.code === 1000) {
+                tableDataJoin.value = res.data.data.taskList
+                console.log(tableDataJoin.value)
+                jointotal.value = res.data.data.total
+            }
+            else {
+                const msg = res.data.message
+                ElMessage({
+                    type: 'error',
+                    message: msg,
+                })
+            }
+        })
+
+}
+/* const { createServer } = require('http');
+
+const HOST = 'localhost';
+const PORT = '8080';
+
+const server = createServer((req, resp) => {
+    // the first param is status code it returns
+    // and the second param is response header info
+    resp.writeHead(200, { 'Content-Type': 'text/plain' });
+
+    console.log('server is working...');
+
+    // call end method to tell server that the request has been fulfilled
+    resp.end('hello nodejs http server');
+});
+
+server.listen(PORT, HOST, (error) => {
+    if (error) {
+        console.log('Something wrong: ', error);
+        return;
     }
-}
-const onSubmit = () => {
-    console.log(form.value)
-    const flag = isRepeat()
-    console.log(flag)
-    /*    if (flag === false) {
-           ElMessage({
-               type: 'warning', message: '引用的数据源重复'
-           })
-           return
-       } */
-    sendForm.value.taskId = SomeTools.guid()
-    sendForm.value.taskName = form.value.taskName
-    sendForm.value.participants = form.value.participants
-    handleAddress()
-    copyForm()
-    standFieldsCopy()
-    console.log(sendForm.value)
-}
+
+    console.log(`server is listening on http://${HOST}:${PORT} ...`);
+});
+
+ */
+const beforeEnter = () => {
+    console.log("before enter");
+    // 在这里可以处理"联邦建模"页面消失前的动画或者逻辑
+};
+
+const afterLeave = () => {
+    console.log("after leave");
+    // "联邦建模" 页面完全消失时，延迟显示 "联邦预测" 页面
+    setTimeout(() => {
+        showCreate.value = true; // 切换到联邦预测
+    }, 500); // 延迟时间，确保动画时长一致
+};
+
+
+onMounted(() => {
+    getMyTask()
+    getMyTaskJoin()
+
+})
+onMounted(() => {
+    if (!localStorage.getItem('isCreate')) {
+        localStorage.setItem('isCreate', 'false')
+    }
+    showCreate.value = localStorage.getItem('isCreate')
+})
 </script>
 
 <style lang="scss" scoped>
-.container {
-    display: flex;
-    justify-content: center;
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity .5s;
+    /* 过渡效果的样式和持续时间 */
 }
+
+.fade-enter,
+.fade-leave-to
+
+/* 进入和离开的样式 */
+    {
+    opacity: 0;
+}
+
+.create {
+    width: 100%;
+    height: 100%;
+}
+
+.index {
+    box-sizing: border-box;
+}
+
+.card-header {
+    padding-left: 10px;
+    border-left: 10px solid #409EFF;
+
+}
+
 
 .header {
-    padding-bottom: 40px;
+    padding-bottom: 20px;
     box-sizing: border-box;
-    //padding-left: 10px;
 }
 
-
-.no-wrap {
-    white-space: nowrap;
-    width: 250px;
+.demo-tabs template span {
+    color: red($color: #000000)
 }
 
-::v-deep.el-pagination {
-    //padding-top: 5px;
-    box-sizing: border-box;
+.state {
+    font-weight: 900;
+    padding: 1px 5px;
+
+}
+
+.accept {
+    color: rgb(126, 192, 80, .8);
+}
+
+.reject {
+    color: rgba(228, 116, 112, 0.8);
+}
+
+.wait {
+    color: gray;
+}
+
+.op-but {
+    padding: 10px;
+    display: flex;
+    flex-direction: row;
     justify-content: center;
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 5px;
+    column-gap: 5px;
+}
+
+.op-but .el-button {
+    box-sizing: border-box;
+    margin: 0;
+    /* 取消默认按钮的 margin */
+    padding: 12px;
+    /* 如果需要，可以调整按钮的 padding */
+}
+
+.waitRow {
+    background-color: #a0cfff;
+}
+
+::v-deep .el-pagination {
+    padding-top: 16px;
+    box-sizing: border-box;
+    justify-content: right;
 
 }
 
-.steps {
-    padding-bottom: 40px;
+.el-tabs::v-deep .el-tabs__item {
+
+    color: gray;
+    transition: all .5s linear;
 
 }
 
-.butContainer {
-    padding-top: 40px;
-    text-align: center;
+.el-tabs::v-deep .el-tabs__item.is-active {
+    color: rgb(22, 119, 255);
+    font-weight: bold;
+    border-bottom: 1px solid #1677ff;
+    transition: all .5s linear;
 
 }
+
+.el-tabs::v-deep .el-tabs__item.is-active span {
+    color: rgb(243, 43, 43);
+
+
+}
+
+/* 初始状态为透明 */
 </style>
