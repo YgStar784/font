@@ -24,7 +24,7 @@ import { ref } from 'vue'
 
 import { ElMessage } from 'element-plus'
 import { changePortAPI } from '@/apis/users'
-
+import { useRouter } from 'vue-router'
 const emits = defineEmits(['update:modelValue'])
 const form = ref({
     oldPort: localStorage.getItem('nodePort'),
@@ -38,7 +38,11 @@ const rules = ref({
             message: '端口号不能为空',
             trigger: 'blur',
         },
-
+        {
+            pattern: /^([1-9][0-9]{0,4}|0)$/,
+            message: '端口号必须是0到65535之间的数字',
+            trigger: 'blur',
+        },
 
     ],
 
@@ -63,7 +67,15 @@ const handleConfirm = () => {
                     type: 'success',
                 })
                 handleClose()
-            } else {
+            } else if (res.code === 1006) {
+                ElMessage({ type: 'warning', message: 'token过期，请重新登录' })
+                handleClose()
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
+            }
+            else {
                 ElMessage({
                     message: res.message,
                     type: 'error',

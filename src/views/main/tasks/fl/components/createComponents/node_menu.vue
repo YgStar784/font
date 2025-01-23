@@ -46,12 +46,14 @@ import { MoreFilled, Location, Coin, VideoPause, VideoPlay, CaretBottom, CaretRi
 import useDragAndDrop from '@/utils/useDnD'
 import { menu } from '../menu.js'
 import axios from 'axios'
+import { useRouter } from 'vue-router';
 const { onDragStart } = useDragAndDrop()
 const userTotal = ref(0)
 const menuList = ref(menu);
 const currentUsersList = ref([])
 const nodeMenu = ref({});
 const nodeClickCuont = ref(0)
+const router= useRouter()
 const move = (evt) => {
     const type = evt.item.attributes.type.nodeValue;
     nodeMenu.value = getMenuByType(type);
@@ -99,7 +101,8 @@ const getUsers = async () => {
                 menu.value[0].children = []
 
                 currentUsersList.value.forEach(user => {
-                    const node = {
+
+                    menu.value[0].children.push({
                         id: '1' + id,
                         type: 'node',
                         name: user.username,
@@ -113,11 +116,33 @@ const getUsers = async () => {
                             state: 'success',
                             address: user.nodeIp + ':' + user.nodePort
                         }
-                    }
-                    menu.value[0].children.push(node)
+                    })
+
+                    menu.value[1].children.push({
+                        id: '21' + id,
+                        type: 'polymer',
+                        name: user.username,
+                        ico: Location,
+                        dataDescription: '',
+                        params: {
+                            cpu_capacity: 1,
+                            memory_capacity: 1,
+                            storage_capacity: 1,
+                            net_throughput: 10,
+                            state: 'success',
+                            address: user.nodeIp + ':' + user.nodePort
+                        }
+                    })
                     id++
                 })
                 menu.value[0].total = userTotal.value
+                menu.value[1].total = userTotal.value
+            }else if(res.data.code===1006){
+                ElMessage({type:'warning',message:'Token过期，请重新登录'})
+                setTimeout(() => {
+                 router.push({ path: '/login' }); // 确保路径和名称正确
+              }, 500); // 避免动画加载导致页面阻塞
+                 return
             }
             else {
                 const msg = res.message

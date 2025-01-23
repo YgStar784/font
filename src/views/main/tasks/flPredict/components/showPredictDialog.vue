@@ -17,13 +17,14 @@ import { TooltipComponent, GridComponent, TitleComponent, LegendComponent } from
 import { CanvasRenderer } from 'echarts/renderers';
 import { nextTick, onMounted, ref } from 'vue';
 import axios from 'axios'
-
+import { useRouter } from 'vue-router';
 const props = defineProps({
     taskUuid: {
         type: String,
         required: true,
     }
 })
+const router = useRouter()
 const emits = defineEmits(['update:modelValue'])
 const handleClose = () => {
     emits('update:modelValue', false)
@@ -40,10 +41,10 @@ const predictions = ref([])
 const diaLoading = ref(false)
 const getPredictData = async () => {
     option.value = {
-        animationDuration: 10000,
+        animationDuration: 1000,
 
         title: {
-            text: '模型训练结果',
+            text: '预测结果',
         },
         tooltip: {
             trigger: 'axis',
@@ -63,7 +64,7 @@ const getPredictData = async () => {
         },
         xAxis: {
             type: 'category',
-            name: '训练轮数',
+            name: '样本索引',
             nameLocation: 'middle',  // 将name位置设置到x轴正下方
             nameGap: 25,  // 控制name与x轴的距离
             data: [],
@@ -106,9 +107,16 @@ const getPredictData = async () => {
                 }
                 )
                 predictions.value.forEach((prediction, index) => {
-                    option.value.xAxis.data.push(`${index + 1}`)
+                    option.value.xAxis.data.push(`${index}`)
                 })
 
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                handleClose()
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.data.message

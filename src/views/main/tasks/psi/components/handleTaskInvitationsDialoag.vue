@@ -1,8 +1,8 @@
 <template>
-    <el-dialog class="psi-invi-dialog" v-loading="loadingOpen" @open="handleOpen" width="800"
+    <el-dialog class="psi-invi-dialog" v-loading="loadingOpen" @open="handleOpen" width="850"
         :model-value="props.dialogVisibleAccept" @close="handleClose" append-to-body>
 
-        <a-descriptions bordered>
+        <a-descriptions size="small" bordered>
             <a-descriptions-item label="任务Uuid" :span="3">
                 <div>{{ props.taskInfo.taskUuid }}</div>
             </a-descriptions-item>
@@ -22,15 +22,16 @@
         </a-descriptions>
         <a-badge-ribbon :text="cardState.content" :color="cardState.color">
             <a-card style="margin-top: 20px;">
-                <el-form :model="form" ref="formRef" label-position="left" style="max-width: 600px;padding-left: 30px"
-                    label-width="120px">
+                <el-form :model="form" :rules="rules" ref="formRef" label-position="left"
+                    style="max-width: 700px;padding-left: 30px" label-width="140px">
 
 
 
                     <el-form-item label="导入类型:" prop="type">
-                        <el-radio-group v-model="form.type" class="ml-4" :disabled="read">
-                            <el-radio :value="0" size="large" :readonly="read">Excel</el-radio>
-                            <el-radio :value="1" size="large" :readonly="read">MySQL</el-radio>
+
+                        <el-radio-group v-model="form.type" class="ml-4" :disabled="read" size="small">
+                            <el-radio-button :value="0" :readonly="read">Excel</el-radio-button>
+                            <el-radio-button :value="1" :readonly="read">MySQL</el-radio-button>
                             <!--                     <el-radio :value="2" size="large">达梦数据库</el-radio>
                     <el-radio :value="3" size="large">Oracle</el-radio> -->
                         </el-radio-group>
@@ -54,9 +55,8 @@
                             </el-col>
                             <el-col :span="2"></el-col>
                             <el-col :span="6">
-
-                                <el-form-item label="端口:" prop="dbPort" label-width="50px">
-                                    <a-input-number placeholder="端口号" v-model="form.dbPort" :readonly="read" />
+                                <el-form-item label="端口:" prop="dbPort" label-width="70px">
+                                    <a-input placeholder="端口号" v-model:value="form.dbPort" :readonly="read" />
                                 </el-form-item></el-col>
                         </el-row>
                         <el-form-item label="数据表名称:" prop="tbName">
@@ -65,14 +65,14 @@
                         </el-form-item>
                         <el-row>
 
-                            <el-col :span="12" label-width=""> <el-form-item label="数据库用户名:" prop="uname">
+                            <el-col :span="12"> <el-form-item label="数据库用户名:" prop="uname">
                                     <el-input placeholder="请输入数据库用户名" v-model="form.uname" :readonly="read"
                                         :bordered="!read" />
                                 </el-form-item></el-col>
                             <el-col :span="2"></el-col>
                             <el-col :span="10">
 
-                                <el-form-item label="密码:" prop="upwd" label-width="50">
+                                <el-form-item label="密码:" prop="upwd" label-width="70">
                                     <a-tooltip v-if="read" :get-popup-container="getPopupContainer" :title="form.upwd"
                                         color="blue">
                                         <el-input placeholder="请输入数据库用户密码" v-model="form.upwd" show-password
@@ -85,14 +85,13 @@
 
                     </div>
 
-                    <el-form-item label="字段索引选择:" prop="fieldName">
+                    <el-form-item label="字段索引选择:">
                         <div class="fieldict-container">
                             <div class="fieldict" v-for="(value, key) in form.fieldDict">
                                 <a-tag class="fieldict-tag">{{ key }}</a-tag><el-icon>
                                     <Sort />
-                                </el-icon><a-input-number :min="0" style="text-align: center;" class="fieldict-input"
-                                    size="small" v-model:value="form.fieldDict[key]" :bordered="!read"
-                                    :readonly="read" />
+                                </el-icon><a-input style="text-align: center;" class="fieldict-input" size="small"
+                                    v-model:value="form.fieldDict[key]" :bordered="!read" :readonly="read" />
                             </div>
                         </div>
                     </el-form-item>
@@ -129,10 +128,12 @@
 <script setup>
 import { ref } from 'vue'
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
+import { ElMessage, formItemValidateStates } from 'element-plus'
 import SomeTools from '@/utils/someTools'
 const loadingOpen = ref(true)
 const cardState = ref({ content: '待处理', color: 'blue' })
+const router = useRouter()
 const props = defineProps({
     taskInfo: {
         type: Object,
@@ -171,13 +172,70 @@ const form = ref({
     //dataSourceDescription: '',
 })
 
-const rules = ref({
-    dataPath: [{
-        required: true,
-        message: '路径不能为空',
-        trigger: 'blur',
-    }]
-})
+const rules = {
+    type: [{ required: true, message: '请选择导入类型', trigger: 'change' }],
+    path: [
+        {
+            required: (form) => form.type === 0, // 仅在导入类型为Excel时必填
+            message: '请输入Excel文件路径',
+            trigger: 'blur',
+        },
+        {
+            pattern: /^(.*)\.(xlsx|xls)$/,
+            message: '请输入合法的Excel文件路径（例如: example.xlsx 或 example.xls）',
+            trigger: 'blur',
+        },
+    ],
+    dbName: [
+        {
+            required: (form) => form.type === 1, // 仅在导入类型为MySQL时必填
+            message: '数据库名称不能为空',
+            trigger: 'blur',
+        },
+    ],
+    dbIp: [
+        {
+            required: (form) => form.type === 1,
+            message: '数据库IP不能为空',
+            trigger: 'blur',
+        },
+        {
+            pattern: /^(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2})(\.(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2})){3}$/,
+            message: '请输入合法的IP地址格式（例如: 192.168.1.1）',
+            trigger: 'blur',
+        },
+    ],
+    dbPort: [
+        {
+            required: (form) => form.type === 1,
+            message: '端口号不能为空',
+            trigger: 'blur',
+        },
+    ],
+    tbName: [
+        {
+            required: (form) => form.type === 1,
+            message: '数据表名称不能为空',
+            trigger: 'blur',
+        },
+    ],
+    uname: [
+        {
+            required: (form) => form.type === 1,
+            message: '数据库用户名不能为空',
+            trigger: 'blur',
+        },
+    ],
+    upwd: [
+        {
+            required: (form) => form.type === 1,
+            message: '数据库用户密码不能为空',
+            trigger: 'blur',
+        },
+    ],
+
+
+};
 const getDialogContainer = () => document.querySelector('.psi-invi-dialog')
 
 const emits = defineEmits(['update:modelValue', 'initMyJoin'])
@@ -201,14 +259,25 @@ const handleOpen = async () => {
             theSameUuidTaskListTotal.value = response.data.data.total;
             form.value = theSameUuidTaskList.value[0]
             console.log('form.value', form.value);
+
             // 第一次解析：将字符串还原成正确的 JSON 格式
 
             // 第二次解析：将 JSON 字符串解析为对象
             form.value.fieldDict = JSON.parse(form.value.FieldDictString);
             console.log('form.value.fieldDict ', form.value.fieldDict);
+
+        } else if (response.data.code === 1006) {
+            ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+            handleClose()
+
+            setTimeout(() => {
+                router.push({ path: '/login' }); // 确保路径和名称正确
+            }, 500); // 避免动画加载导致页面阻塞
+            return
         } else {
-            ElMessage({ type: 'error', message: response.data.message });
+            ElMessage({ type: 'error', message: '请求失败，请重试' });
         }
+
     } catch (error) {
         ElMessage({ type: 'error', message: '请求失败，请重试' });
 
@@ -236,7 +305,8 @@ const onSubmit = async (flag) => {
     handleClickLoad.value = true
     form.value.dataSourceUuid = SomeTools.guid()
     form.value.id = props.taskInfo.id
-    formRef.value.validate(async (valid) => {
+
+    formRef.value.validateField(form.value.type === 0 ? ['path'] : ['dbName', 'dbIp', 'dbPort', 'tbName', 'uname', 'upwd'], async (valid) => {
         if (valid) {
             const sendForm = ref({})
             sendForm.value.id = form.value.id
@@ -271,6 +341,14 @@ const onSubmit = async (flag) => {
                         formRef.value.resetFields()
                         emits('initMyJoin')
                         handleClose()
+                    } else if (res.data.code === 1006) {
+                        ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                        handleClose()
+
+                        setTimeout(() => {
+                            router.push({ path: '/login' }); // 确保路径和名称正确
+                        }, 500); // 避免动画加载导致页面阻塞
+                        return
                     }
                     else {
                         const msg = res.data.message
@@ -281,10 +359,60 @@ const onSubmit = async (flag) => {
                     }
                 })
         }
-        else {
-            ElMessage({ type: 'error', message: '繁忙，请稍后再试' })
-        }
+
     })
+
+    /*     const sendForm = ref({})
+        sendForm.value.id = form.value.id
+        sendForm.value.dataSourceUuid = form.value.dataSourceUuid
+        sendForm.value.dbIp = form.value.dbIp
+        sendForm.value.dbName = form.value.dbName
+        sendForm.value.dbPort = form.value.dbPort
+        sendForm.value.orcl = form.value.orcl
+        sendForm.value.path = form.value.path
+        sendForm.value.tbName = form.value.tbName
+        sendForm.value.fieldDict = form.value.fieldDict
+        sendForm.value.type = form.value.type
+        sendForm.value.uname = form.value.uname
+        sendForm.value.upwd = form.value.upwd
+        if (flag === 'accept') {
+            sendForm.value.state = 0
+        }
+        else if (flag === 'reject') {
+            sendForm.value.state = 1
+        }
+        await axios.post('/api/PSI/handleTaskInvitations', sendForm.value
+            , {
+                headers: {
+                    Authorization: localStorage.getItem('token'),
+                }
+            }).then(res => {
+                if (res.data.code === 1000) {
+                    ElMessage({
+                        type: 'success',
+                        message: flag
+                    })
+                    formRef.value.resetFields()
+                    emits('initMyJoin')
+                    handleClose()
+                } else if (res.data.code === 1006) {
+                    ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                    handleClose()
+    
+                    setTimeout(() => {
+                        router.push({ path: '/login' }); // 确保路径和名称正确
+                    }, 500); // 避免动画加载导致页面阻塞
+                    return
+                }
+                else {
+                    const msg = res.data.message
+                    ElMessage({
+                        type: 'error',
+                        message: msg,
+                    })
+                }
+            })
+     */
     handleClickLoad.value = false
 }
 
@@ -297,7 +425,6 @@ const onSubmit = async (flag) => {
     gap: 30px;
     justify-content: flex-start;
     align-items: center;
-    height: 80px;
 
 }
 
@@ -312,7 +439,7 @@ const onSubmit = async (flag) => {
 }
 
 .fieldict-input {
-    width: 55px;
+    width: 80px;
     text-align: center;
 }
 
@@ -320,7 +447,7 @@ const onSubmit = async (flag) => {
 
 .fieldict-tag {
     margin: 0;
-    width: 55px;
+    width: 80px;
     text-align: center;
 }
 

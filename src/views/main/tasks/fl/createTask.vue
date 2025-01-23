@@ -38,9 +38,29 @@
 
         <!-- 中间流程图容器 -->
         <div class="flow-container" @drop="onDrop($event, nodes, edges)">
+
             <VueFlow ref="flowRef" @nodes-change="onNodesChange" @edges-change="onEdgesChange" :apply-default="false"
                 @nodesDelete="handleNodesDelete" class="vue-flow" :edges="edges" :nodes="nodes" :node-types="nodeTypes"
-                @dragover="onDragOver" @dragleave="onDragLeave" fit-view-on-init elevate-edges-on-select>
+                @dragover="onDragOver" @dragleave="onDragLeave" fit-view-on-init :fit-view-options="{ padding: 0.2 }"
+                :default-zoom="3" @pane-ready="onPaneReady" elevate-edges-on-select>
+
+                <div style="position: absolute;left: 30%; display: flex;flex-wrap: nowrap;flex-direction: row;justify-content: center;align-items: center;gap:5px;padding-top: 10px;background-color: transparent;  
+">
+
+
+                    <div v-for="(item, index) in taskState"
+                        style="display: flex;flex-wrap: nowrap;flex-direction: row; justify-content: center;">
+                        <div
+                            style="display: flex;flex-direction: column;justify-content: center;align-items: center; gap: 5px;">
+                            <el-button :type="item.type" :icon="item.icon" circle />
+                            <el-text size="small">{{ item.name }}</el-text>
+                        </div>
+                        <!-- 如果不是最后一个元素，就添加一条连线 -->
+                        <div v-if="index < taskState.length - 1" class="divider-line"></div>
+                    </div>
+
+                </div>
+
 
                 <MiniMap />
                 <template #node-node="nodeProps">
@@ -67,10 +87,16 @@
                     <SpecialEdge v-bind="specialEdgeProps" />
                 </template>
 
-                <div class="top-op-bar">
+                <!--  <div class="top-op-bar">
+
+                    <el-button @click="updatePosition" circle><el-icon>
+                            <Paperclip />
+                        </el-icon></el-button>
+                </div> -->
+                <!--                 <div class="top-op-bar">
 
                     <el-button v-if="!moreButShow" @click="handleMoreBut" circle><el-icon>
-                            <More />
+                            <Paperclip />
                         </el-icon></el-button>
 
                     <el-button v-if="moreButShow" @click="handleMoreBut" circle><el-icon>
@@ -79,7 +105,7 @@
                     <a-tooltip v-if="moreButShow" title="查看代码">
                         <a-button shape="circle" :icon="h(SearchOutlined)" />
                     </a-tooltip>
-                </div>
+                </div> -->
                 <Controls>
                     <!-- Default controls -->
                     <ControlButton title="Toggle Dark Mode" @click="toggleDarkMode">
@@ -87,8 +113,13 @@
                         <Icon v-else name="moon" />
                     </ControlButton>
                 </Controls>
-                <a-float-button v-if="canSubmit" class="submit" tooltip="提交" @click="showTaskInfoDialog"
-                    type="primary"></a-float-button>
+                <a-float-button class="refresh" @click="updatePosition">
+                    <template #icon>
+                        <SyncOutlined />
+                    </template>
+                </a-float-button> <a-float-button
+                    v-if="trainingNodeStatus && modelConfigStatus && aggregationAlgorithmStatus" class="submit"
+                    tooltip="提交" @click="showTaskInfoDialog" type="primary"></a-float-button>
                 <DropzoneBackground class="flow-background" :style="{
                     backgroundColor: isDragOver ? '#e7f3ff' : 'transparent',
                     transition: 'background-color 0.2s ease',
@@ -108,7 +139,7 @@
                 </el-icon> </el-button>
             <TaskForm v-if="!selectedComponenet" :taskInfo="taskInfo" @updateTaskInfo="updateTaskInfo"></TaskForm>
             <NodeForm
-                v-else-if="selectedComponenet && (selectedComponenet.type === 'starter' || selectedComponenet.type === 'node' || selectedComponenet.type === 'polymer')"
+                v-else-if="selectedComponenet && (selectedComponenet.type === 'ender' || selectedComponenet.type === 'starter' || selectedComponenet.type === 'node' || selectedComponenet.type === 'polymer')"
                 :nodeInfo="selectedComponenet.data.info" @updateNodeInfo="updateNodeInfo"></NodeForm>
             <ModelForm v-else-if="selectedComponenet && selectedComponenet.type === 'model'"
                 :modelInfo="selectedComponenet.data.info" @updateModelInfo="updateModelInfo"></ModelForm>
@@ -128,7 +159,8 @@
 import { ref, watch, computed, h, onMounted, reactive } from 'vue'
 import { VueFlow, useVueFlow, MarkerType } from '@vue-flow/core'
 import { SearchOutlined } from '@ant-design/icons-vue';
-
+import { Edit, UploadFilled, Picture, StarFilled, Check } from '@element-plus/icons-vue'
+import { useLayout } from '@/utils/autoPosition.js'
 import { message } from 'ant-design-vue';
 import CustomNode from './components/createComponents/CustomNode.vue';
 import CustomEdge from './components/createComponents/CustomEdge.vue';
@@ -144,11 +176,12 @@ import { MiniMap } from '@vue-flow/minimap'
 import EdgeWithButton from './components/createComponents/EdgeWithButton.vue'
 import RightForm from './components/createComponents/formComponents/node_form.vue'
 import { larger, log } from 'mathjs';
-import dagre from 'dagre';
 import { ElMessage } from 'element-plus';
 import { useUserStore } from '@/stores/user';
 import SomeTools from '@/utils/someTools'
 import { nowDate } from '../date'
+import dagre from 'dagre';
+import { QuestionCircleOutlined, SyncOutlined } from '@ant-design/icons-vue';
 
 import TaskForm from './components/createComponents/formComponents/task_form.vue'
 import NodeForm from './components/createComponents/formComponents/node_form.vue'
@@ -158,8 +191,10 @@ import AlgForm from './components/createComponents/formComponents/algorithm_form
 import CustomForm from './components/createComponents/formComponents/custom_form.vue';
 import { extendRightForm } from './components/createComponents/rightBarExtend.js'
 import TaskInfoShowDialog from './components/createComponents/taskInfoShowDialog.vue'
-const { onConnect, nodes, edges, setNodes, addNodes, addEdges, getNodes, getSelectedNodes,
-    getSelectedEdges, onNodeClick, removeNodes, removeEdges, applyEdgeChanges, onEdgeClick, applyNodeChanges, onPaneClick, removeSelectedElements, removeSelectedNodes } =
+import { flow } from 'lodash';
+const { layout } = useLayout()
+const { viewport, screenToFlowCoordinate, Position, onConnect, nodes, edges, setNodes, addNodes, addEdges, getNodes, getSelectedNodes,
+    getSelectedEdges, onNodeClick, removeNodes, removeEdges, applyEdgeChanges, onEdgeClick, applyNodeChanges, onPaneClick, removeSelectedElements, removeSelectedNodes, onPaneReady } =
     useVueFlow({ id: 'flowRef' })
 // Register the custom node
 const nodeTypes = {
@@ -180,6 +215,7 @@ const selectedComponenet = ref(null)
 const buttonEdgeProps = {
     'edge-buttonline': EdgeWithButton,
 }
+let layerOneFlag = ref(false)
 const starterInfo = ref({})
 //用户点击提交之后，显示任务信息对话框
 const taskInfoShow = ref(false)
@@ -197,8 +233,33 @@ const sendForm = reactive({});
 // 动态样式：根据 isWide 的值调整宽度
 const rightSidebarWidth = computed(() => (extendRightForm.value ? '80%' : '20%'));
 
+// 定义四个任务状态 ref
+const trainingNodeStatus = ref(false) // 训练节点
+const modelConfigStatus = ref(false) // 模板/模型配置
+const aggregationNodeStatus = ref(false) // 聚合节点
+const aggregationAlgorithmStatus = ref(false) // 聚合算法
+// 计算状态，生成不同样式的 timeline 步骤
+const taskState = ref([{
+    name: '训练节点',
+    type: trainingNodeStatus.value ? 'success' : 'primary',
+    icon: trainingNodeStatus.value ? Check : Edit,
+}, {
+    name: '模板/模型配置',
+    type: modelConfigStatus.value ? 'success' : 'primary',
+    icon: modelConfigStatus.value ? Check : Edit,
+}, {
+    name: '聚合节点(可选)',
+    type: aggregationNodeStatus.value ? 'success' : 'primary',
+    icon: aggregationNodeStatus.value ? Check : Edit,
+},
+{
+    name: '聚合算法',
+    type: aggregationAlgorithmStatus.value ? 'success' : 'primary',
+    icon: aggregationAlgorithmStatus.value ? Check : Edit,
+}])
 const showTaskInfoDialog = () => {
     // 清空 sendForm 的内容
+
     Object.assign(sendForm, {});
     const taskParams = ref({})
     sendForm.taskName = taskInfo.value.name
@@ -211,10 +272,13 @@ const showTaskInfoDialog = () => {
     console.log(nodes.value);
     //获取聚合节点信息
     const polymer = nodes.value.filter(node => node.type === 'polymer')
-    taskParams.value.serverNode = {
-        address: polymer[0].data.info.params.address,
-        uuid: SomeTools.guid(),
-        dataDescription: polymer[0].data.info.dataDescription
+
+    if (polymer.length > 0) {
+        taskParams.value.serverNode = {
+            address: polymer[0].data.info.params.address,
+            uuid: SomeTools.guid(),
+            dataDescription: polymer[0].data.info.dataDescription
+        }
     }
     //获取训练节点信息clientNodes
     taskParams.value.clientNodes = []
@@ -234,21 +298,35 @@ const showTaskInfoDialog = () => {
     const alg = nodes.value.filter(node => node.type === 'algorithm')
     taskParams.value.alg = alg[0].data.info.params.code
     //saveMode目前写死
-    taskParams.value.saveMode = 0
     //获取模型信息
     const modelConfig = ref({})
     const model = nodes.value.filter(node => node.type === 'model')
     modelConfig.value = model[0].data.info.params
+    delete modelConfig.value.model_type
     modelConfig.value.layers = []
     const layers = nodes.value.filter(node => node.type === 'layer')
     layers.forEach(layer => {
-        modelConfig.value.layers.push(layer.data.info.params)
+        let reCopy = {}
+        if (layer.data.info.params.type === 'reshape') {
+            reCopy = layer.data.info.params
+            const b = reCopy.shape[0]
+            const v = reCopy.shape[1] * reCopy.shape[2] * reCopy.shape[3]
+            const shape = [b, v]
+            modelConfig.value.layers.push({ type: 'reshape', shape: shape })
+
+        } else {
+            modelConfig.value.layers.push(layer.data.info.params)
+        }
+
     })
     taskParams.value.modelConfig = modelConfig.value
     sendForm.taskParams = taskParams.value
     console.log('sendForm', sendForm);
     // 等待数据完成响应式更新后再打开对话框
-
+    if (sendForm.taskName === '') {
+        ElMessage({ type: 'warning', message: '任务名称未填写' })
+        return
+    }
     taskInfoShow.value = true;
 
 }
@@ -287,13 +365,91 @@ const getUserInfo = async () => {
     starterInfo.value.level = localStorage.getItem('level') === '0' ? '管理员' : '普通用户'
 
 }
-const findSelected = () => {
-    if (!onNodeClick()) {
-        selectedComponenet.value = null
-    }
-    console.log('selectedComponenet', selectedComponenet.value);
 
-}
+const updatePosition = () => {
+    if (!flowRef.value) {
+        console.error('flowRef 未绑定！');
+        return;
+    }
+
+    const container = flowRef.value.$el; // VueFlow 容器
+    const { clientWidth } = container;
+
+    // 获取 viewport 信息
+    const { x: viewportX, y: viewportY, zoom } = viewport.value;
+
+    // 偏移配置，根据缩放调整
+    const offsetX = 20 / zoom;
+    const offsetY = 65 / zoom;
+
+    // 计算画布中心点位置
+    const centerX = (clientWidth / 2 - viewportX) / zoom - offsetX;
+    const topY = -viewportY / zoom + offsetY;
+
+    console.log(`centerX: ${centerX}, topY: ${topY}`);
+
+    // 查找 starter 节点并更新位置
+    const starterNode = nodes.value.find((node) => node.type === 'starter');
+    if (starterNode) {
+        starterNode.position = {
+            x: centerX - starterNode.dimensions.width / 2, // 居中考虑宽度
+            y: topY,
+        };
+    }
+
+    nodes.value = [...nodes.value]; // 确保响应式更新
+
+    let currentY = topY + (starterNode ? starterNode.dimensions.height : 0) + offsetY;
+
+    // 布局 node 节点（左右对称排列）
+    const nodeNodes = nodes.value.filter((node) => node.type === 'node');
+    if (nodeNodes.length > 0) {
+        const totalNodeWidth =
+            nodeNodes.length * (nodeNodes[0].dimensions.width + offsetX) - offsetX;
+
+        let nodeX = centerX - totalNodeWidth / 2; // 确保整体对称居中
+        nodeNodes.forEach((node) => {
+            node.position = {
+                x: nodeX,
+                y: currentY,
+            };
+            nodeX += node.dimensions.width + offsetX; // 水平间隔
+        });
+        currentY += nodeNodes[0].dimensions.height + offsetY;
+    }
+
+    // 布局 model 节点
+    const modelNodes = nodes.value.filter((node) => node.type === 'model');
+    if (modelNodes.length === 1) {
+        const modelNode = modelNodes[0];
+        modelNode.position = {
+            x: centerX - modelNode.dimensions.width / 2, // 居中考虑宽度
+            y: currentY,
+        };
+        currentY += modelNode.dimensions.height + offsetY;
+    }
+
+    // 布局 polymer 节点
+    const polymerNode = nodes.value.find((node) => node.type === 'polymer');
+    if (polymerNode) {
+        polymerNode.position = {
+            x: centerX - polymerNode.dimensions.width / 2, // 居中考虑宽度
+            y: currentY,
+        };
+        currentY += polymerNode.dimensions.height + offsetY;
+    }
+
+    // 布局 algorithm 节点
+    const algorithmNode = nodes.value.find((node) => node.type === 'algorithm');
+    if (algorithmNode) {
+        algorithmNode.position = {
+            x: centerX - algorithmNode.dimensions.width / 2, // 居中考虑宽度
+            y: currentY,
+        };
+    }
+
+    nodes.value = [...nodes.value]; // 再次触发响应式更新
+};
 const handleNodesDelete = (event) => {
     console.log('delete');
 
@@ -306,9 +462,80 @@ const onNodesChange = async (changes) => {
     const nodeTypesOrder = ['starter', 'node', 'model', 'polymer', 'algorithm', 'ender']; // 定义节点顺序
 
     for (const change of changes) {
+        if (change.type === 'position') {
+            const nodeMove = nodes.value.find(node => node.id === change.id);
+            if (nodeMove && nodeMove.type === 'layer') {
+                continue;
+            }
+        }
         if (change.type === 'remove') {
-            selectedComponenet.value = null
 
+            // 检查是否是 starter 或 ender 节点
+            const nodeToRemove = nodes.value.find(node => node.id === change.id);
+            if (nodeToRemove && (nodeToRemove.type === 'starter' || nodeToRemove.type === 'ender')) {
+                if (nodeToRemove.type === 'starter') {
+                    ElMessage({ type: 'warning', message: '发起方不能被删除' })
+                }
+                if (nodeToRemove.type === 'ender') {
+                    ElMessage({ type: 'warning', message: '请选择删除聚合算法' })
+                }
+
+                continue; // 跳过删除操作
+            }
+            // 如果删除的节点类型为 `algorithm`
+            if (nodeToRemove && nodeToRemove.type === 'algorithm') {
+                nodes.value.forEach(node => {
+                    if (node.type === 'ender') {
+                        node.selected = true
+                        // 将 `ender` 节点的删除操作加入 `changes`
+                        nextChanges.push({ id: node.id, type: 'remove' });
+                    }
+                })
+            }
+            // 处理 `layer` 节点删除逻辑
+            if (nodeToRemove && nodeToRemove.type === 'layer') {
+                const layerNodes = nodes.value.filter(node => node.type === 'layer');
+
+                // 如果只剩一个 `layer` 节点，不能删除
+                if (layerNodes.length === 1) {
+                    const modelNode = nodes.value.filter(node => node.type === 'model');
+
+                    nextChanges.push({ id: modelNode[0].id, type: 'remove' });
+                }
+
+                // 查找删除节点相关的 edges
+                const edgesToDelete = edges.value.filter(edge => edge.source === nodeToRemove.id || edge.target === nodeToRemove.id);
+
+                const sourceEdge = edgesToDelete.find(edge => edge.target === nodeToRemove.id); // 输入边
+                const targetEdge = edgesToDelete.find(edge => edge.source === nodeToRemove.id); // 输出边
+
+                if (sourceEdge && targetEdge) {
+                    // 创建新的连通边，将 sourceEdge 的源节点连到 targetEdge 的目标节点
+                    const newEdge = {
+                        id: `e-${sourceEdge.source}-${targetEdge.target}`,
+                        source: sourceEdge.source,
+                        target: targetEdge.target,
+                        type: 'smoothstep', // 自定义连线类型
+                        animated: true,
+                        style: { stroke: '#409eff', strokeWidth: 2 }, // 设置线条样式
+
+                    };
+                    edges.value.push(newEdge); // 添加新的边
+                }
+            }
+            if (nodeToRemove && nodeToRemove.type === 'model') {
+                const childLayers = nodes.value.filter(node => node.type === 'layer');
+
+                childLayers.forEach(layer => {
+                    nextChanges.push({ id: layer.id, type: 'remove' }); // 删除 layer 节点
+                    // 删除与 layer 节点相关的 edges
+                    edges.value = edges.value.filter(edge => edge.source !== layer.id && edge.target !== layer.id);
+                });
+
+            }
+
+
+            selectedComponenet.value = null
             // 获取删除后剩下的节点（假设删除选中的节点）
             const selectedNodes = nodes.value.filter(node => node.selected); // 当前被选中的节点
 
@@ -343,12 +570,12 @@ const onNodesChange = async (changes) => {
                 }
             }
 
-            // 校验剩余类型是否符合顺序
-            if (length !== remainingTypes.length) {
-                // 显示警告信息并取消删除操作
-                ElMessage({ type: 'warning', message: '只能逆序删除！' })
-                return;
-            }
+            /*  // 校验剩余类型是否符合顺序
+             if (length !== remainingTypes.length) {
+                 // 显示警告信息并取消删除操作
+                 ElMessage({ type: 'warning', message: '只能逆序删除！' })
+                 return;
+             } */
 
             nextChanges.push(change);
         } else {
@@ -367,7 +594,7 @@ const onEdgesChange = (changes) => {
     console.log('onEdgesChange', changes);
 
     for (const change of changes) {
-        if (change.type === 'remove' || change.type === 'add') {
+        if (change.type === 'remove') {
             console.warn(`Edge ${change.id} cannot be removed.`);
             // 跳过删除操作
             continue;
@@ -460,7 +687,7 @@ const handleMoreBut = () => {
     moreButShow.value = !moreButShow.value
 }
 // Watch the length of nodes
-watch(nodesLength, (newLength, oldLength) => {
+/* watch(nodes.value.length, (newLength, oldLength) => {
     console.log('New length:', newLength, 'Old length:', oldLength);
     if (newLength === oldLength + 1) {
         const node = nodes.value[newLength - 1]; // Get the newly added node
@@ -471,13 +698,20 @@ watch(nodesLength, (newLength, oldLength) => {
             nodes.value.forEach((item) => {
                 if (item.type === 'starter') {
                     const edge = {
-                        id: `e-${item.id}-${node.id}`, source: item.id, target: node.id, label: '发起任务', type:
-                            'buttonline', labelBgPadding: [8, 4],
+                        id: `e-${item.id}-${node.id}`,
+                        source: item.id,
+                        target: node.id,
+                        label: '发起任务',
+                        type: 'buttonline',
+                        labelBgPadding: [8, 4],
                         labelBgBorderRadius: 4,
+                        style: { stroke: '#409eff', strokeWidth: 2 }, // 使用透明度使颜色更淡
                         labelBgStyle: { fill: '#FFCC00', color: '#fff', fillOpacity: 0.7 },
-                        markerEnd: MarkerType.ArrowClosed,
-
-                    }
+                        markerEnd: {
+                            type: MarkerType.ArrowClosed,
+                            color: '#409eff', // 箭头颜色与线条颜色一致
+                        },
+                    };
                     edges.value.push(edge);
                 }
             })
@@ -486,13 +720,21 @@ watch(nodesLength, (newLength, oldLength) => {
             nodes.value.forEach((item) => {
                 if (item.type === 'node') {
                     const edge = {
-                        id: `e-${item.id}-${node.id}`, source: item.id, target: node.id, label: '本地训练', type:
-                            'buttonline', labelBgPadding: [8, 4],
+                        id: `e-${item.id}-${node.id}`,
+                        source: item.id,
+                        target: node.id,
+                        label: '本地训练',
+                        type: 'buttonline',
+                        labelBgPadding: [8, 4],
                         labelBgBorderRadius: 4,
-                        labelBgStyle: { fill: '#FFCC00', color: '#fff', fillOpacity: 0.7 },
-                        markerEnd: MarkerType.ArrowClosed,
-
-                    }
+                        style: { stroke: '#409eff', strokeWidth: 2 }, // 设置线条颜色
+                        labelBgStyle: { fill: '#FFCC00', color: '#409eff', fillOpacity: 0.7 },
+                        markerEnd: {
+                            type: MarkerType.ArrowClosed,
+                            color: '#409eff', // 如果无效，则采用自定义 SVG 箭头
+                            strokeWidth: 2,
+                        },
+                    };
                     edges.value.push(edge)
                 }
             })
@@ -504,11 +746,14 @@ watch(nodesLength, (newLength, oldLength) => {
                 return
             }
             const edge = {
-                id: `e-${pre.id}-${node.id}`, source: pre.id, target: node.id, type: 'layerline',
+                id: `e-${pre.id}-${node.id}`, source: pre.id, target: node.id,
                 labelBgPadding: [8, 4],
                 labelBgBorderRadius: 4,
-                labelBgStyle: { fill: '#FFCC00', color: '#fff', fillOpacity: 0.7 },
-                markerEnd: MarkerType.ArrowClosed,
+                type: 'smoothstep',
+                animated: true,
+                style: { stroke: '#409eff', strokeWidth: 2 }, // 设置线条样式
+
+                labelBgStyle: { stroke: '#409eff', strokeWidth: 1 },
                 sourcePosition: pre.position.top,
             }
             edges.value.push(edge);
@@ -523,7 +768,11 @@ watch(nodesLength, (newLength, oldLength) => {
                         labelBgStyle: { fill: '#FFCC00', color: '#fff', fillOpacity: 0.7 },
                         markerEnd: MarkerType.ArrowClosed,
                         sourcePosition: item.position.bottom,
-
+                        style: { stroke: '#409eff', strokeWidth: 2 }, // 可选样式
+                        markerEnd: {
+                            type: MarkerType.ArrowClosed,
+                            color: '#409eff', // 箭头颜色与线条颜色一致
+                        },
                     }
                     edges.value.push(edge);
 
@@ -537,8 +786,13 @@ watch(nodesLength, (newLength, oldLength) => {
                         id: `e-${item.id}-${node.id}`, source: item.id, target: node.id, type: 'ployline',
                         labelBgPadding: [8, 4],
                         labelBgBorderRadius: 4,
+                        style: { stroke: '#409eff', strokeWidth: 2 }, // 可选样式
+
                         labelBgStyle: { fill: '#FFCC00', color: '#fff', fillOpacity: 0.7 },
-                        markerEnd: MarkerType.ArrowClosed,
+                        markerEnd: {
+                            type: MarkerType.ArrowClosed,
+                            color: '#409eff', // 箭头颜色与线条颜色一致
+                        },
                         sourcePosition: item.position.bottom,
                     }
                     edges.value.push(edge);
@@ -546,7 +800,12 @@ watch(nodesLength, (newLength, oldLength) => {
                 }
             })
             let ender = {
-                id: 'ender', position: { x: node.position.x - 80, y: node.position.y + 50 }, data: { label: '接收方' }, type:
+                id: 'ender', position: { x: node.position.x - 80, y: node.position.y + 50 }, data: {
+                    label: `发起方-${starterInfo.value.username}`
+                    , info: { params: { cpu_capacity: 1, memory_capacity: 1, storage_capacity: 1, net_throughput: 10, state: 'success', address: starterInfo.value.nodeIp + ':' + starterInfo.value.nodePort }, type: 'starter' }
+                    , type:
+                        'starter'
+                }, type:
                     'ender'
             }
             addNodes([ender
@@ -554,10 +813,16 @@ watch(nodesLength, (newLength, oldLength) => {
             edges.value.push({
                 id: `e-${node.id}-${ender.id}`, source: node.id, target: ender.id, type: 'ployline',
                 labelBgPadding: [8, 4],
+                style: { stroke: '#409eff', strokeWidth: 2 }, // 可选样式
+
                 labelBgBorderRadius: 4,
                 labelBgStyle: { fill: '#FFCC00', color: '#fff', fillOpacity: 0.7 },
-                markerEnd: MarkerType.ArrowClosed,
+                markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    color: '#409eff', // 箭头颜色与线条颜色一致
+                },
                 sourcePosition: node.position.bottom,
+
             })
         }
     } else if (newLength > oldLength + 1) {
@@ -567,13 +832,21 @@ watch(nodesLength, (newLength, oldLength) => {
                 nodes.value.forEach((item) => {
                     if (item.type === 'node') {
                         const edge = {
-                            id: `e-${item.id}-${node.id}`, source: item.id, target: node.id, label: '本地训练', type:
-                                'buttonline', labelBgPadding: [8, 4],
+                            id: `e-${item.id}-${node.id}`,
+                            source: item.id,
+                            target: node.id,
+                            label: '本地训练',
+                            type: 'buttonline',
+                            labelBgPadding: [8, 4],
                             labelBgBorderRadius: 4,
-                            labelBgStyle: { fill: '#FFCC00', color: '#fff', fillOpacity: 0.7 },
-                            markerEnd: MarkerType.ArrowClosed,
-
-                        }
+                            style: { stroke: '#409eff', strokeWidth: 2 }, // 设置线条颜色
+                            labelBgStyle: { fill: '#FFCC00', color: '#409eff', fillOpacity: 0.7 },
+                            markerEnd: {
+                                type: MarkerType.ArrowClosed,
+                                color: '#409eff', // 如果无效，则采用自定义 SVG 箭头
+                                strokeWidth: 2,
+                            },
+                        };
                         edges.value.push(edge)
                     }
                 })
@@ -589,8 +862,9 @@ watch(nodesLength, (newLength, oldLength) => {
                         type: 'smoothstep', // 使用平滑曲线
                         labelBgPadding: [8, 4],
                         labelBgBorderRadius: 4,
+                        animated: true,
+                        style: { stroke: '#409eff', strokeWidth: 2 }, // 设置线条样式
                         labelBgStyle: { fill: '#FFCC00', color: '#fff', fillOpacity: 0.7 },
-                        markerEnd: MarkerType.ArrowClosed,
                         sourceHandle: isSameColumn ? 'b' : 'r',
                         targetHandle: isSameColumn ? 't' : 'l',
                     };
@@ -620,9 +894,176 @@ watch(nodesLength, (newLength, oldLength) => {
     }
 
 
-});
+}); */
 watch(nodes, () => {
+    edges.value = []
     canSubmit.value = nodes.value.some(node => node.type === 'ender');
+    //生成starter与nodes之间的连线 
+    const modelNode = nodes.value.filter(node => node.type === 'model')
+    if (modelNode.length > 0) {
+        modelConfigStatus.value = true
+    } else {
+        modelConfigStatus.value = false
+
+    }
+    const nodeNode = nodes.value.filter(node => node.type === 'node');
+    if (nodeNode.length > 0) {
+        trainingNodeStatus.value = true
+        for (let i = 0; i <= nodeNode.length - 1; i++) {
+            const edge = {
+                id: `e-${nodes.value[0].id}-${nodeNode[i].id}`,
+                source: nodes.value[0].id,
+                target: nodeNode[i].id,
+                label: '发起任务',
+                type: 'buttonline',
+                labelBgPadding: [8, 4],
+                labelBgBorderRadius: 4,
+                style: { stroke: '#409eff', strokeWidth: 2 }, // 使用透明度使颜色更淡
+                labelBgStyle: { fill: '#FFCC00', color: '#fff', fillOpacity: 0.7 },
+                markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    color: '#409eff', // 箭头颜色与线条颜色一致
+                },
+            };
+            edges.value.push(edge);
+        }
+    } else {
+        trainingNodeStatus.value = false
+
+    }
+    //生成node与model之间的连线
+    nodes.value.forEach(node => {
+        if (node.type === 'model') {
+            nodes.value.forEach((item) => {
+                if (item.type === 'node') {
+                    const edge = {
+                        id: `e-${item.id}-${node.id}`,
+                        source: item.id,
+                        target: node.id,
+                        label: '本地训练',
+                        type: 'buttonline',
+                        labelBgPadding: [8, 4],
+                        labelBgBorderRadius: 4,
+                        style: { stroke: '#409eff', strokeWidth: 2 }, // 设置线条颜色
+                        labelBgStyle: { fill: '#FFCC00', color: '#409eff', fillOpacity: 0.7 },
+                        markerEnd: {
+                            type: MarkerType.ArrowClosed,
+                            color: '#409eff', // 如果无效，则采用自定义 SVG 箭头
+                            strokeWidth: 2,
+                        },
+                    };
+                    edges.value.push(edge)
+                }
+            })
+        }
+    })
+    //生层layer之间的连线
+    const layerNodes = nodes.value.filter(node => node.type === 'layer');
+    for (let i = 0; i < layerNodes.length - 1; i++) {
+        const currentNode = layerNodes[i];
+        const nextNode = layerNodes[i + 1];
+        // 创建 edge
+        const isSameColumn = currentNode.position.x === nextNode.position.x;
+
+        const edge = {
+            id: `e-${currentNode.id}-${nextNode.id}`,
+            source: currentNode.id,
+            target: nextNode.id,
+            type: 'smoothstep', // 使用平滑曲线
+            animated: true,
+            style: { stroke: '#409eff', strokeWidth: 2 }, // 设置线条样式
+
+            labelBgPadding: [8, 4],
+            labelBgBorderRadius: 4,
+            labelBgStyle: { fill: '#FFCC00', color: '#fff', fillOpacity: 0.7 },
+            sourceHandle: isSameColumn ? 'b' : 'r', // 根据节点位置设置
+            targetHandle: isSameColumn ? 't' : 'l',
+        }
+        // 将 edge 添加到 edges 列表
+        edges.value.push(edge);
+    }
+    const polymerNode = nodes.value.filter(node => node.type === 'polymer')
+
+    if (polymerNode.length > 0) {
+        aggregationNodeStatus.value = true
+        if (modelNode.length > 0) {
+            const edge = {
+                id: `e-${modelNode[0].id}-${polymerNode[0].id}`, source: modelNode[0].id, target: polymerNode[0].id, label: '聚合', type:
+                    'buttonline', labelBgPadding: [8, 4],
+                labelBgBorderRadius: 4,
+                labelBgStyle: { fill: '#FFCC00', color: '#fff', fillOpacity: 0.7 },
+                markerEnd: MarkerType.ArrowClosed,
+                sourcePosition: modelNode[0].position.bottom,
+                style: { stroke: '#409eff', strokeWidth: 2 }, // 可选样式
+                markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    color: '#409eff', // 箭头颜色与线条颜色一致
+                },
+            }
+            edges.value.push(edge);
+        }
+    } else {
+        aggregationNodeStatus.value = false
+    }
+    const algorithmNode = nodes.value.filter(node => node.type === 'algorithm')
+    if (algorithmNode.length > 0) {
+        aggregationAlgorithmStatus.value = true
+        if (polymerNode.length > 0) {
+            const edge = {
+                id: `e-${polymerNode[0].id}-${algorithmNode[0].id}`, source: polymerNode[0].id, target: algorithmNode[0].id, labelBgPadding: [8, 4],
+                labelBgBorderRadius: 4,
+                labelBgStyle: { fill: '#FFCC00', color: '#fff', fillOpacity: 0.7 },
+                markerEnd: MarkerType.ArrowClosed,
+                sourcePosition: polymerNode[0].position.bottom,
+                style: { stroke: '#409eff', strokeWidth: 2 }, // 可选样式
+                markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    color: '#409eff', // 箭头颜色与线条颜色一致
+                },
+            }
+            edges.value.push(edge);
+        } else if (modelNode.length > 0) {
+            const edge = {
+                id: `e-${modelNode[0].id}-${algorithmNode[0].id}`, source: modelNode[0].id, target: algorithmNode[0].id, label: '聚合', type:
+                    'buttonline', labelBgPadding: [8, 4],
+                labelBgBorderRadius: 4,
+                labelBgStyle: { fill: '#FFCC00', color: '#fff', fillOpacity: 0.7 },
+                markerEnd: MarkerType.ArrowClosed,
+                sourcePosition: modelNode[0].position.bottom,
+                style: { stroke: '#409eff', strokeWidth: 2 }, // 可选样式
+                markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    color: '#409eff', // 箭头颜色与线条颜色一致
+                },
+            }
+            edges.value.push(edge);
+        }
+    } else {
+        aggregationAlgorithmStatus.value = false
+    }
+    // 动态更新 `taskState`
+    taskState.value = [
+        {
+            name: '训练节点',
+            type: trainingNodeStatus.value ? 'success' : 'primary',
+            icon: trainingNodeStatus.value ? Check : Edit,
+        },
+        {
+            name: '模板/模型配置',
+            type: modelConfigStatus.value ? 'success' : 'primary',
+            icon: modelConfigStatus.value ? Check : Edit,
+        },
+        {
+            name: '聚合节点(可选)',
+            type: aggregationNodeStatus.value ? 'success' : 'primary',
+            icon: aggregationNodeStatus.value ? Check : Edit,
+        },
+        {
+            name: '聚合算法',
+            type: aggregationAlgorithmStatus.value ? 'success' : 'primary',
+            icon: aggregationAlgorithmStatus.value ? Check : Edit,
+        },
+    ];
 
 }, { deep: true })
 
@@ -695,6 +1136,7 @@ onMounted(async () => {
                 'starter'
         }
     }])
+
 })
 
 </script>
@@ -714,12 +1156,20 @@ body {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    overflow: hidden;
+    /* 避免滚动条可能导致的缝隙 */
 }
 
 .app {
     display: flex;
     width: 100%;
     height: 100%;
+    gap: 0;
+    padding: 0;
+    margin: 0;
+    /* 确保没有外边距 */
+    overflow: hidden;
+    /* 避免溢出导致的滚动条或空白 */
 }
 
 .left-sidebar,
@@ -733,13 +1183,39 @@ body {
 
 .openOrscale {
     position: absolute;
-    left: -15px;
+    left: -10px;
     /* 与父元素左边框对齐 */
     top: 50%;
     /* 垂直方向定位到父元素中间 */
     transform: translateY(-50%);
     /* 通过 transform 将子元素向上移动自身高度的一半 */
     z-index: 10;
+}
+
+.divider-line {
+    width: 30px;
+    /* 设置连线长度 */
+    height: 4px;
+    /* 设置连线高度 */
+    background-color: #d3d3d3;
+    /* 连线颜色 */
+    margin-top: 15px;
+    /* 使连线居中 */
+    border-radius: 2px;
+    /* 圆角连线 */
+    transition: background-color 0.3s ease;
+}
+
+.divider-line:hover {
+    background-color: #409eff;
+    /* 鼠标悬浮时的颜色 */
+}
+
+.refresh {
+    position: absolute;
+    bottom: 235px;
+    right: 20px;
+    transition: all 0.3s linear;
 }
 
 .submit {
@@ -764,10 +1240,13 @@ body {
     box-sizing: border-box;
     align-items: flex-start;
     /* 垂直方向对齐顶部 */
+
+    padding: 0;
     height: 100%;
     /* 确保侧边栏占满高度 */
-
     gap: 5px;
+    overflow-x: hidden;
+    overflow-y: auto;
     /* 可以根据需要增加内边距 */
     border-left: 1px gray solid;
     /* 使 padding 不影响布局 */

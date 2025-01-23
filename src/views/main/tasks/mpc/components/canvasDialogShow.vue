@@ -107,10 +107,12 @@ import { NTag, NBadge, NSpin, NIcon, NSpace, NCard, NSkeleton, NDescriptions, ND
 import { ref, nextTick, onMounted } from 'vue';
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
-import { extractUsernamesAndBracket, extractOperators, extractUsernames } from '@/utils/utils'
+import { extractUsernamesAndBracket, extractUsernamesAndBracketIncludeMaxOrMin, extractOperators } from '@/utils/utils'
 import { log } from 'mathjs';
 import { CheckmarkCircle } from '@vicons/ionicons5'
 import { ErrorFilled, ChartPie } from '@vicons/carbon';
+import { useRouter } from 'vue-router';
+const router = useRouter()
 const uniqueBracketRec = ref([])
 const ctx = ref(null); // 保存 Canvas 的上下文
 const formulaInfo = ref({})
@@ -188,8 +190,121 @@ const getUser = async (username) => {
 
 
 }
+function countNormalUsersInFunc(funcStr) {
+    // 递归提取函数中的正常用户数
+    const regex = /[a-zA-Z\u4e00-\u9fa5]+/g; // 匹配中文或英文的用户名
+    const matches = funcStr.match(regex) || [];
+    return matches.length;
+}
+function extractUserStates(formulaStr, stateList) {
+    const operatorChars = ['+', '-', '*', '/', '＋', '－', '＊', '／'];
+    const funcNames = ['min', 'max', 'max_value', 'min_value']; // 函数名
+    let i = 0; // 状态列表索引
+    let userStates = {}; // 存储用户的状态信息
+
+    // **1. 去掉 max(、min( 并替换为 (
+    funcNames.forEach((func) => {
+        const regex = new RegExp(`\\b${func}\\(`, 'g'); // 匹配完整单词
+        formulaStr = formulaStr.replace(regex, '(');
+    });
+
+    console.log('处理后的公式:', formulaStr);
+
+    // **2. 遍历公式字符串，提取用户名
+    let username = '';
+    for (let j = 0; j < formulaStr.length; j++) {
+        const char = formulaStr[j];
+
+        if (operatorChars.includes(char) || char === '(' || char === ')' || char === ',' || char.trim() === '') {
+            // 遇到操作符、括号、逗号或空格，提交已累积的用户名
+            if (username.length > 0) {
+                if (!(username in userStates)) {
+                    userStates[username] = [];
+                }
+                userStates[username].push(stateList[i]); // 将状态赋予用户
+                i++;
+                username = ''; // 重置用户名
+            }
+        } else {
+            // 累积字符为用户名
+            username += char;
+        }
+    }
+
+    // **3. 提交最后一个用户名
+    if (username.length > 0) {
+        if (!(username in userStates)) {
+            userStates[username] = [];
+        }
+        userStates[username].push(stateList[i]);
+    }
+
+    // **4. 统计每个用户的最高状态和其数量
+    const result = Object.entries(userStates).map(([username, states]) => {
+        const stateCounts = { 0: 0, 1: 0, 2: 0 }; // 状态出现次数
+        states.forEach((s) => {
+            stateCounts[s]++;
+        });
+
+        let highestState = 0;
+        if (stateCounts[1] > 0) {
+            highestState = 1; // 拒绝
+        } else if (stateCounts[2] > 0) {
+            highestState = 2; // 待处理
+        }
+
+        return {
+            value: username,
+            state: highestState,
+            stateCount: stateCounts[highestState],
+        };
+    });
+
+    console.log('result', result);
+    return result;
+}
+function extractFunctionUsername(formulaStr, i) {
+    const funcNames = ['min', 'max', 'min_value', 'max_value']; // 增加 "min_value" 和 "max_value"
+    let funcName = ''; // 存储函数名
+    let name = ''; // 存储完整用户名
+    let startIndex = i;
+
+    // 提取可能的函数名 "min"、"max"、"min_value" 或 "max_value"
+    while (i < formulaStr.length && /[a-zA-Z_]/.test(formulaStr[i])) {  // 增加对下划线 "_" 的支持
+        funcName += formulaStr[i];
+        i++;
+    }
+
+    // 判断是否为函数名
+    if (!funcNames.includes(funcName.toLowerCase())) {
+        return { name: null, newIndex: startIndex }; // 不是函数，返回原始索引
+    }
+
+    name = funcName; // 初始用户名包含函数名
+    let bracketBalance = 0; // 括号配对计数
+
+    // 检测第一个左括号 "("
+    if (formulaStr[i] === '(') {
+        name += '(';
+        bracketBalance++;
+        i++;
+    } else {
+        return { name: null, newIndex: startIndex }; // 函数后面没有左括号，不是合法函数
+    }
+
+    // 提取函数内容，直到括号匹配完成
+    while (i < formulaStr.length && bracketBalance > 0) {
+        name += formulaStr[i];
+        if (formulaStr[i] === '(') bracketBalance++;
+        if (formulaStr[i] === ')') bracketBalance--;
+        i++;
+    }
+
+    return { name, newIndex: i }; // 返回完整用户名和更新后的索引
+}
 const generateFormula = (formulaStr, playerState) => {
     let userCount = 0; // 用于计数操作数
+    let funcUserCount = 0;
     let i = 0; // 初始化索引
 
     // 定义操作符字符（包括全角和半角）
@@ -198,11 +313,12 @@ const generateFormula = (formulaStr, playerState) => {
 
     while (i < formulaStr.length) {
         // 检查当前字符是否为用户名的起始字符（字母或汉字）
-        if (!operatorChars.includes(formulaStr[i]) && formulaStr[i] !== '(' && formulaStr[i] !== ')') {
+        if (!operatorChars.includes(formulaStr[i]) && formulaStr[i] !== '(' && formulaStr[i] !== ')' && formulaStr[i] !== ' ') {
             userCount++;
             let leftBracket = '';
             let rightBracket = '';
             let username = '';
+            const funcNames = ['min', 'max', 'min_value', 'max_value'];
 
             // 向左查找所有左括号
             let leftIndex = i - 1;
@@ -219,8 +335,17 @@ const generateFormula = (formulaStr, playerState) => {
                 formulaStr[i] !== ')' &&
                 !whitespaceChars.includes(formulaStr[i])
             ) {
-                username += formulaStr[i];
-                i++;
+
+                const { name, newIndex } = extractFunctionUsername(formulaStr, i);
+                console.log('name', name);
+                if (name != null) {
+                    username = name
+                    i = newIndex
+                }
+                else {
+                    username += formulaStr[i];
+                    i++;
+                }
             }
 
             // 向右查找所有右括号
@@ -230,17 +355,34 @@ const generateFormula = (formulaStr, playerState) => {
                 rightIndex++;
             }
 
-            // 将找到的括号与当前用户名拼接
-            let bracketEl = {
-                rank: userCount,
-                value: username, // 记录完整的用户名
-                bracket: leftBracket + rightBracket, // 记录左右括号
-                state: playerState[userCount - 1],
-            };
+            let bracketEl = {}
+            // 检测是否为 `min` 或 `max` 函数
+            if (funcNames.includes(username.toLowerCase())) {
+                console.log('username', username);
+                // 将找到的括号与当前用户名拼接
+                bracketEl = {
+                    rank: userCount,
+                    value: username, // 记录完整的用户名
+                    bracket: leftBracket + rightBracket, // 记录左右括号
+
+                };
+                funcUserCount += countNormalUsersInFunc(username)
+            }
+            else {
+                // 将找到的括号与当前用户名拼接
+                bracketEl = {
+                    rank: userCount,
+                    value: username, // 记录完整的用户名
+                    bracket: leftBracket + rightBracket, // 记录左右括号
+                    state: playerState[userCount + funcUserCount - 1],
+                };
+            }
 
             // 将结果推入 bracketRec 数组
             bracketRec.value.push(bracketEl);
-
+            console.log('leftIndex', leftIndex);
+            console.log('i', formulaStr[i]);
+            console.log('rightIndex', rightIndex);
             // 跳过已遍历的右括号
             i = rightIndex;
         } else if (operatorChars.includes(formulaStr[i])) {
@@ -252,56 +394,7 @@ const generateFormula = (formulaStr, playerState) => {
             i++;
         }
     }
-    uniqueBracketRec.value = bracketRec.value.reduce((acc, curr) => {
-        // 查找是否已有相同的 value
-        const existing = acc.find(item => item.value === curr.value);
-
-        if (existing) {
-            // 如果已存在，合并 state 到 state 数组
-            existing.state.push(curr.state);
-        } else {
-            // 如果不存在，创建一个新的对象并添加到 acc
-            acc.push({
-                rank: curr.rank,
-                value: curr.value,
-                state: [curr.state]
-            });
-        }
-
-        return acc;
-    }, []);
-    userStateList.value = uniqueBracketRec.value.map(item => {
-        const stateCounts = { 0: 0, 1: 0, 2: 0 };
-
-        // 统计 state 中 0, 1, 2 的数量
-        item.state.forEach(s => {
-            if (s in stateCounts) {
-                stateCounts[s]++;
-            }
-        });
-
-        let state;
-        let stateCount;
-
-        if (stateCounts[1] > 0) {
-            state = 1;
-            stateCount = stateCounts[1];
-        } else if (stateCounts[2] > 0) {
-            state = 2;
-            stateCount = stateCounts[2];
-        } else {
-            state = 0;
-            stateCount = stateCounts[0];
-        }
-
-        return {
-            rank: item.rank,
-            value: item.value,
-            state,
-            stateCount
-        };
-    });
-    console.log('userStateList.value', userStateList.value);
+    console.log('bracketRec.value', bracketRec.value);
 };
 const formulaUsersDraw = (formulaStr, x, y) => {
     let first = {
@@ -353,6 +446,76 @@ const resetCanvasSize = () => {
     canvas.width = defaultCanvasWidth;
     canvas.height = defaultCanvasHeight;
 };
+function getStringWidth(text, font = '16px Arial') {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    context.font = font; // 设置字体样式
+    const width = context.measureText(text).width; // 测量文本宽度
+    return width;
+}
+const extractUsernamesFromFunc = (funcStr) => {
+    console.log('funcStr', funcStr);
+    const funcNames = ['min', 'max', 'min_value', 'max_value'];
+    funcStr = funcStr.trim(); // 去除首尾空格
+
+    // 检查括号匹配
+    const checkBracketsBalanced = (str) => {
+        let balance = 0;
+        for (let char of str) {
+            if (char === '(') balance++;
+            if (char === ')') balance--;
+            if (balance < 0) return false;
+        }
+        return balance === 0;
+    };
+
+    if (!checkBracketsBalanced(funcStr)) {
+        throw new Error('括号不匹配，请检查表达式格式');
+    }
+
+    const regex = /^(\w+)\((.*)\)$/;
+    const match = funcStr.match(regex);
+    if (!match || !funcNames.includes(match[1].toLowerCase())) {
+        throw new Error('输入不是合法的 max 或 min 函数表达式');
+    }
+
+    const content = match[2];
+    let bracketBalance = 0;
+    let subExpression = '';
+    let usernames = [];
+
+    for (let i = 0; i < content.length; i++) {
+        const char = content[i];
+        if (char === '(') bracketBalance++;
+        if (char === ')') bracketBalance--;
+        if (char === ',' && bracketBalance === 0) {
+            if (subExpression.trim().length > 0) {
+                usernames = usernames.concat(extractUsernames(subExpression.trim()));
+            }
+            subExpression = '';
+        } else {
+            subExpression += char;
+        }
+    }
+
+    if (subExpression.trim().length > 0) {
+        usernames = usernames.concat(extractUsernames(subExpression.trim()));
+    }
+
+    return usernames;
+};
+
+const extractUsernames = (expr) => {
+    const funcNames = ['min', 'max', 'min_value', 'max_value'];
+    const match = expr.match(/^(\w+)\((.*)\)$/);
+
+    if (match && funcNames.includes(match[1].toLowerCase())) {
+        return extractUsernamesFromFunc(expr);
+    } else {
+        return [expr];
+    }
+};
+
 const generateComponentsOnCanvas = (playerState) => {
     const canvas = canvasRef.value;
     const initialCanvasWidth = canvas.width; // 初始画布宽度
@@ -362,7 +525,7 @@ const generateComponentsOnCanvas = (playerState) => {
     const componentHeight = 40; // 每个用户组件的高度
     const operatorWidth = 50; // 每个操作符组件的宽度
 
-
+    const funcNames = ['min', 'max', 'min_value', 'max_value']
     let x = 50 // 初始化x坐标，居中
     let y = initialCanvasHeight / 2; // 初始化y坐标，居中
     console.log('x,y', x, y);
@@ -372,41 +535,104 @@ const generateComponentsOnCanvas = (playerState) => {
     formulaOp.value = []
     generateFormula(formulaInfo.value.mapString, playerState)
     componentsOnCanvas.value = []; // 清空画布上的组件
+    let first = {}
+    const funcName = bracketRec.value[0].value.trim().split('(')[0].toLowerCase();
+    let totalWidth = 50
+    if (funcNames.includes(funcName)) {
+        if (funcName === 'max_value' || funcName === 'min_value') {
+            first = {
+                type: 'function',
+                value: bracketRec.value[0].value.substring(0, 9),
+                users: [bracketRec.value[0].value.slice(10, -1)],
+                x,
+                y,
+                width: getStringWidth(bracketRec.value[0].value, '16px Arial'),
+                height: componentHeight,
+                bracket: bracketRec.value[0].bracket,
+            }
+        }
+        else {
+            first = {
+                type: 'function',
+                value: bracketRec.value[0].value[0] + bracketRec.value[0].value[1] + bracketRec.value[0].value[2],
+                users: [bracketRec.value[0].value.slice(4, -1)],
+                x,
+                y,
+                width: getStringWidth(bracketRec.value[0].value, '16px Arial'),
+                height: componentHeight,
+                bracket: bracketRec.value[0].bracket,
+            }
+        }
+    }
+    else {
+        first = {
+            type: 'users',
+            value: { username: bracketRec.value[0].value },
+            x,
+            y,
+            width: componentWidth,
+            height: componentHeight,
+            bracket: bracketRec.value[0].bracket,
+            state: bracketRec.value[0].state,
+        };
+    }
 
-    let first = {
-        type: 'users',
-        value: { username: bracketRec.value[0].value },
-        x,
-        y,
-        width: componentWidth,
-        height: componentHeight,
-        bracket: bracketRec.value[0].bracket,
-        state: playerState[0],
-    };
     componentsOnCanvas.value.push(first);
-
+    totalWidth += first.width
     // 初始化连接线数组
     connections.value = [];
     let prevComponent = first;
     let connId = 0;
 
-    // 更新最大X和Y值
+    // 更新最大X    和Y值
     maxX = Math.max(maxX, x + componentWidth);
     maxY = Math.max(maxY, y + componentHeight);
 
     for (let i = 1; i < bracketRec.value.length; i++) {
-        x += componentWidth + 120;
+        let userComponent = {}
+        const funcName = bracketRec.value[i].value.trim().split('(')[0].toLowerCase();
+        console.log('funcNames.includes(bracketRec.value[i].value)', funcNames.includes(bracketRec.value[i].value));
+        if (funcNames.includes(funcName)) {
+            console.log('bracketRec.value[i].value', bracketRec.value[i].value);
+            if (funcName === 'max_value' || funcName === 'min_value') {
 
-        let userComponent = {
-            type: 'users',
-            value: { username: bracketRec.value[i].value },
-            x,
-            y,
-            width: componentWidth,
-            height: componentHeight,
-            bracket: bracketRec.value[i].bracket,
-            state: playerState[i],
-        };
+                userComponent = {
+                    type: 'function',
+                    value: bracketRec.value[i].value.substring(0, 9),
+                    users: [bracketRec.value[i].value.slice(10, -1)],
+                    x: totalWidth + 100,
+                    y: y - 20,
+                    width: getStringWidth(bracketRec.value[i].value, '16px Arial'),
+                    height: componentHeight,
+                    bracket: bracketRec.value[i].bracket,
+                }
+            }
+            else {
+                userComponent = {
+                    type: 'function',
+                    value: bracketRec.value[i].value[0] + bracketRec.value[i].value[1] + bracketRec.value[i].value[2],
+                    users: [bracketRec.value[i].value.slice(4, -1)],
+                    x: totalWidth + 100,
+                    y,
+                    width: getStringWidth(bracketRec.value[i].value, '16px Arial'),
+                    height: componentHeight,
+                    bracket: bracketRec.value[i].bracket,
+                }
+            }
+
+        }
+        else {
+            userComponent = {
+                type: 'users',
+                value: { username: bracketRec.value[i].value },
+                x: totalWidth + 100,
+                y,
+                width: componentWidth,
+                height: componentHeight,
+                bracket: bracketRec.value[i].bracket,
+                state: bracketRec.value[i].state,
+            };
+        }
         componentsOnCanvas.value.push(userComponent);
 
         // 添加连接线
@@ -422,6 +648,8 @@ const generateComponentsOnCanvas = (playerState) => {
         // 更新最大X和Y值
         maxX = Math.max(maxX, x + componentWidth);
         maxY = Math.max(maxY, y + componentHeight);
+        totalWidth += userComponent.width + 50
+        console.log('totalWidth', totalWidth);
     }
 
     // 根据最大X和最大Y调整画布的宽度和高度
@@ -442,6 +670,7 @@ const generateComponentsOnCanvas = (playerState) => {
     }
     console.log('canvasDiv.value', canvasDiv.value);
     // 重新绘制画布
+    console.log('componentsOnCanvas', componentsOnCanvas.value);
     setCanvasResolution(); // 调整分辨率（如需要）
     drawCanvas(); // 初次绘制画布
 };
@@ -478,6 +707,7 @@ const mapState = async () => {
     
         console.log('mapStringState', mapStringState.value); */
     mapStringState.value = formulaInfo.value.playerStateList
+    console.log(' mapStringState.value', mapStringState.value);
 };
 const handleOpen = async () => {
     console.log('open');
@@ -488,13 +718,15 @@ const handleOpen = async () => {
     await nextTick(); // 确保 DOM 更新完成
     console.log(formulaInfo.value);
     //获取表达式的用户名与括号
-
-    const users = extractUsernamesAndBracket(formulaInfo.value.mapString)
+    userStateList.value = []
+    const users = extractUsernamesAndBracketIncludeMaxOrMin(formulaInfo.value.mapString)
+    console.log('users', users);
     const operators = extractOperators(formulaInfo.value.mapString)
+    console.log('operators', operators);
     resetCanvasSize()
     console.log('mapStringState.value', mapStringState.value);
     generateComponentsOnCanvas(mapStringState.value)
-
+    userStateList.value = extractUserStates(formulaInfo.value.mapString, mapStringState.value)
     console.log('bracketRec', bracketRec.value);
     uniqueBracketRec.value = []
     uniqueBracketRec.value = bracketRec.value.filter((item, index, self) =>
@@ -527,6 +759,13 @@ const getMapAndState = async () => {
             if (res.data.code === 1000) {
                 formulaInfo.value = res.data.data
                 console.log('formulaInfo.value', formulaInfo.value);
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                handleClose()
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.data.message
@@ -693,7 +932,33 @@ const drawConnections = () => {
             const { startPoint, endPoint } = findClosestEdgePoints(conn.source, conn.target);
 
             // 绘制带箭头的连接线，并在中间嵌入圆形按钮
+
             drawArrowLine(startPoint.x, startPoint.y, endPoint.x, endPoint.y, conn.circleContent);
+        }
+    });
+};
+const drawUserTextWithColor = (ctx, userText, x, y) => {
+    const fontSize = 14; // 字体大小
+    ctx.font = `${fontSize}px Arial`; // 设置字体
+    ctx.textBaseline = 'middle'; // 文本基线
+
+    let currentX = x; // 起始 X 坐标
+
+    // 正则表达式匹配 `%c` 标记
+    const parts = userText.split(/(%c.*?%c)/);
+
+    parts.forEach((part) => {
+        if (part.startsWith('%c') && part.endsWith('%c')) {
+            // 红色部分：去掉 %c 标记
+            const text = part.slice(2, -2);
+            ctx.fillStyle = 'red'; // 设置字体颜色为红色
+            ctx.fillText(text, currentX, y); // 绘制文本
+            currentX += ctx.measureText(text).width; // 更新 X 坐标
+        } else {
+            // 普通文本
+            ctx.fillStyle = 'black'; // 设置字体颜色为黑色
+            ctx.fillText(part, currentX, y); // 绘制文本
+            currentX += ctx.measureText(part).width; // 更新 X 坐标
         }
     });
 };
@@ -779,6 +1044,91 @@ const drawCanvas = () => {
             }
 
         }
+        if (component.type === 'function') {
+            // 绘制 function 形状
+            let circleRadius = 20; // 圆的半径
+            if (component.value.includes('max_value') || component.value.includes('min_value')) {
+                circleRadius = 40
+            }
+            // 动态计算矩形宽度和文本
+            console.log('component', component);
+            const userText = component.users.length > 0
+                ? `( ${component.users.join(', ')} )`
+                : "请将用户拖拽至此"; // 动态提示文本
+            ctx.value.font = '14px Arial'; // 设置字体
+
+
+            const rectWidth = Math.max(ctx.value.measureText(userText).width + 20, 140); // 确保宽度准确
+            const rectHeight = 40; // 矩形高度
+            // 绘制圆形
+            ctx.value.beginPath();
+
+            ctx.value.arc(component.x + circleRadius, component.y + circleRadius, circleRadius, 0, 2 * Math.PI);
+            ctx.value.fillStyle = '#add8e6';
+            ctx.value.fill();
+            ctx.value.strokeStyle = '#4682b4';
+            ctx.value.stroke();
+
+            /*             if (component.value === 'max_value' || component.value === 'min_vlaue') {
+                            ctx.value.beginPath();
+            
+                            ctx.value.ellipse(
+                                component.x + circleRadius,  // 圆心的 x 坐标
+                                component.y + circleRadius,  // 圆心的 y 坐标
+                                circleRadius * 2,          // 水平半径，调整为比垂直半径大一些以形成椭圆
+                                circleRadius,                // 垂直半径
+                                0,                           // 旋转角度
+                                0,                           // 开始角度
+                                2 * Math.PI                  // 结束角度
+                            );
+                            ctx.value.fillStyle = '#add8e6';
+                            ctx.value.fill();
+                            ctx.value.strokeStyle = '#4682b4';
+                            ctx.value.stroke();
+                        }
+                        else {
+                            ctx.value.beginPath();
+                            ctx.value.arc(component.x + circleRadius, component.y + circleRadius, circleRadius, 0, 2 * Math.PI);
+                            ctx.value.fillStyle = '#add8e6';
+                            ctx.value.fill();
+                            ctx.value.strokeStyle = '#4682b4';
+                            ctx.value.stroke();
+            
+                        } */
+            // 绘制圆内的文本
+            ctx.value.font = '16px Arial';
+            ctx.value.fillStyle = 'black';
+            ctx.value.textAlign = 'center';
+            ctx.value.textBaseline = 'middle';
+            ctx.value.fillText(component.value, component.x + circleRadius, component.y + circleRadius);
+
+            // 绘制矩形
+            let rectX = component.x + circleRadius * 2;
+            console.log('component.value', component.value);
+            /*             if (component.value === 'max_value' || component.value === 'min_value') {
+                            rectX = component.x + circleRadius * 3;
+                        } */
+            const rectY = component.y + (circleRadius - rectHeight / 2);
+            ctx.value.fillStyle = '#f0f8ff';
+            ctx.value.fillRect(rectX, rectY, rectWidth, rectHeight);
+            ctx.value.strokeRect(rectX, rectY, rectWidth, rectHeight);
+
+            // 绘制矩形内的用户值
+            ctx.value.fillStyle = component.users.length > 0 ? 'black' : 'gray'; // 提示文本为灰色
+            ctx.value.font = component.users.length > 0 ? '14px Arial' : 'italic 14px Arial'; // 提示文本为斜体
+            ctx.value.textAlign = 'left';
+            if (component.users.length === 0) {
+                ctx.value.fillText(userText, rectX + 10, rectY + rectHeight / 2);
+
+
+            }
+            else {
+                drawUserTextWithColor(ctx.value, userText, rectX + 10, rectY + rectHeight / 2)
+
+            }
+            component.width = circleRadius * 2 + rectWidth; // 包括圆形和矩形的总宽度
+            component.height = Math.max(circleRadius * 2, rectHeight); // 确保高度为圆形或矩形中较大的那个
+        }
         // 如果组件有括号，则在组件外部绘制括号并突出显示
         // 如果组件有括号，则在组件外部绘制括号并突出显示
         if (component.bracket) {
@@ -858,8 +1208,8 @@ const OpenLoading = async () => {
     align-items: center;
     background-color: #f0f0f0;
     /* 允许滚动 */
-    overflow: hidden;
-
+    overflow-y: hidden;
+    overflow-x: auto;
 }
 
 // 在 CSS 中定义一个类
@@ -875,13 +1225,14 @@ const OpenLoading = async () => {
 }
 
 .canvas {
-    width: 1000px;
+    width: 3600px;
     height: 500px;
     box-sizing: border-box;
 
     border: 1px solid #ccc;
     border-right: 1px solid #ccc;
-
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .icon-description {

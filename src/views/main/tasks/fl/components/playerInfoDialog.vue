@@ -1,16 +1,21 @@
 <template>
 
-    <el-dialog class="dialog" :model-value="dialogVisiblePlayer" width="1000px" @close="handleClose" append-to-body>
-        <el-card>
-            <el-descriptions title="基本信息">
-                <el-descriptions-item label="任务ID">{{ props.taskUuid }}</el-descriptions-item>
-                <el-descriptions-item label="任务名称">{{ props.taskName }}</el-descriptions-item>
-                <el-descriptions-item label="角色">任务发起方</el-descriptions-item>
-                <el-descriptions-item label="创建时间">{{ props.createTime }}</el-descriptions-item>
-                <el-descriptions-item label="任务描述">{{ props.taskDescription }}</el-descriptions-item>
+    <el-dialog class="dialog" :model-value="dialogVisiblePlayer" width="1000px" @open="handlePlayerInfo"
+        @close="handleClose" append-to-body destroy-on-close>
+        <el-card v-loading="playerInfoLoading">
+            <el-descriptions title="基本信息" :column="4">
+                <el-descriptions-item label="任务ID" :span="2">{{ props.taskUuid }}</el-descriptions-item>
+                <el-descriptions-item label="任务名称" :span="1">{{ props.taskName }}</el-descriptions-item>
 
-
-
+                <el-descriptions-item label="角色" :span="1">任务发起方</el-descriptions-item>
+                <el-descriptions-item label="创建时间" :span="2">{{ props.createTime }}</el-descriptions-item>
+                <el-descriptions-item label="任务描述" :span="4">{{ props.taskDescription }}</el-descriptions-item>
+                <el-descriptions-item v-if="props.taskInfoError" :span="4">
+                    <template #label>
+                        <span>失败原因</span>
+                    </template>
+                    <el-text class="mx-1" type="danger">{{ taskInfoError }}</el-text>
+                </el-descriptions-item>
             </el-descriptions>
         </el-card>
         <br>
@@ -44,6 +49,7 @@
 
             </el-descriptions>
         </el-card>
+
     </el-dialog>
 </template>
 
@@ -52,15 +58,12 @@
 
 import { onMounted, ref } from 'vue';
 import axios from 'axios';
+import { useRouter } from 'vue-router'
+const router = useRouter()
 const taskPlayerList = ref([])
 const playerInfoLoading = ref(false)
 const playertotal = ref(0)
 const props = defineProps({
-    dialogValue: {
-        type: String,
-        default: '',
-        required: true
-    },
     taskUuid: {
         type: String,
         default: '',
@@ -81,8 +84,17 @@ const props = defineProps({
         default: '',
         required: true
     },
+    taskInfoError: {
+        type: String,
+        default: '',
+    }
 })
 const queryFormPlayer = ref({
+    uuid: '',
+    page: 1,
+    pageSize: 30
+})
+const queryFormTask = ref({
     uuid: '',
     page: 1,
     pageSize: 30
@@ -92,7 +104,9 @@ const emits = defineEmits(['update:modelValue'])
 const handleClose = () => {
     emits('update:modelValue', false)
 }
+
 const handlePlayerInfo = async () => {
+    playerInfoLoading.value = true
     /*     router.push({
             path: '/mpcplayerinfo',
             query: {
@@ -104,6 +118,8 @@ const handlePlayerInfo = async () => {
             }
         }) */
     queryFormPlayer.value.uuid = props.taskUuid
+    queryFormTask.value.uuid = props.taskUuid
+    console.log('props.taskUuid', props.taskUuid);
     await axios.post('/api/FL/getMyTrainTaskPlayers', queryFormPlayer.value
         , {
             headers: {
@@ -115,6 +131,13 @@ const handlePlayerInfo = async () => {
                 taskPlayerList.value = res.data.data.taskList
                 console.log(taskPlayerList.value)
                 playertotal.value = res.data.data.total
+            } else if (response.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                handleClose()
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.data.message
@@ -125,12 +148,9 @@ const handlePlayerInfo = async () => {
             }
         })
 
-}
-onMounted(async () => {
-    playerInfoLoading.value = true
-    await handlePlayerInfo()
     playerInfoLoading.value = false
-})
+}
+
 </script>
 
 <style scoped>

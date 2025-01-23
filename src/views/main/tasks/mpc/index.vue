@@ -1,6 +1,6 @@
 <template>
 
-    <div class="flex justify-between items-center flex-wrap">
+    <div v-if="showMore === 'false'" class="flex justify-between items-center flex-wrap">
         <el-card>
             <template #header>
                 <div class="card-header">
@@ -72,18 +72,21 @@
                                     </template>
                                 </template>
                                 <template v-slot="{ row }" align="center" v-if="item.label === '任务类型'">
-                                    <template v-if="row.tasktype === 0">
-                                        <span>安全多方计算</span>
-                                    </template>
+
+                                    <span>{{ row.taskType }}</span>
 
                                 </template>
                             </el-table-column>
 
                             <el-table-column fixed="right" label="操作" width="160px" align="center">
                                 <template #default="{ row }">
-                                    <el-tooltip class="item" effect="light" content="参与者信息" placement="top">
+                                    <!--                                     <el-tooltip class="item" effect="light" content="参与者信息" placement="top">
                                         <el-button type="success" size="small" icon="Search" label="查看"
                                             @click="handlePlayerInfo(row)" />
+                                    </el-tooltip> -->
+                                    <el-tooltip class="item" effect="light" content="查看" placement="top">
+                                        <el-button type="success" size="small" icon="Search" label="查看"
+                                            @click="showMoreInfo(row)" />
                                     </el-tooltip>
                                     <el-tooltip class="item" effect="light" content="画布" placement="top">
                                         <el-button size="small" @click="showCanvas(row)"><el-icon>
@@ -149,6 +152,9 @@
                             v-for="(item, index) in taskOptionsJoin" :key="index">
                             <template v-slot="{ row }" align="center" v-if="item.label === '编号'" v-show="false">
 
+                            </template>
+                            <template v-slot="{ row }" align="center" v-if="item.label === '任务类型'">
+                                <span>{{ row.taskType }}</span>
                             </template>
                             <template v-slot="{ row }" align="center" v-if="item.label === '状态'">
                                 <template v-if="row.state === 0">
@@ -230,15 +236,23 @@
             </el-tabs>
 
         </el-card>
-        <MpcDialog v-model="dialogVisible" @initTaskList="getMyTask" v-if="dialogVisible" />
+        <MpcDialog v-model="dialogVisible" @initTaskList="getMyTask" @initMyInivList="getMyTaskJoin"
+            v-if="dialogVisible" />
         <PlayerDialog v-model="dialogVisiblePlayer" :dialogTableValue="taskPlayerList" v-if="dialogVisiblePlayer"
-            :taskName="taskName" :taskUuid="taskUuid" :createTime="createTime" :taskDescription="taskDescription" />
+            :taskName="taskName" :taskInfoError="taskInfoError" :taskUuid="taskUuid" :createTime="createTime"
+            :taskDescription="taskDescription" />
         <HandleTaskInvitationsDialoag v-model="dialogVisibleAccept" :taskInfo="taskInfo" @initMyJoin="getMyTaskJoin" />
         <HandleRejectDialog v-model="centerDialogVisible" :taskInfo="taskInfo" @initMyJoin="getMyTaskJoin" />
         <canvasShowDialog v-model="canvasShowDialogValue" :taskInfo="taskInfo" />
 
     </div>
+    <div class="more-info" v-if="showMore === 'true'">
+        <transition name="fade" mode="out-in">
 
+            <RouterView />
+
+        </transition>
+    </div>
 </template>
 <script setup>
 import { useRouter } from 'vue-router'
@@ -248,6 +262,7 @@ import { ElMessage } from 'element-plus'
 import { onMounted, ref, watch, onBeforeUnmount, nextTick } from 'vue'
 import { Search, Edit, Setting, Delete } from '@element-plus/icons-vue'
 import { taskOptions } from '../taskOptions'
+import { showMore } from '../fl/isCreate'
 import { taskOptionsJoin } from '../taskOptionsJoinMPC'
 import PlayerDialog from './components/playerInfoDialog.vue'
 import HandleTaskInvitationsDialoag from './components/handleTaskInvitationsDialoag.vue'
@@ -280,6 +295,7 @@ const queryFormPlayer = ref({
     page: 1,
     pageSize: 10
 })
+const taskInfoError = ref('')
 const activeName = ref('myUpload')
 const router = useRouter()
 const dialogVisibleAccept = ref(false)
@@ -326,8 +342,20 @@ const getMyTask = async () => {
             console.log(res)
             if (res.data.code === 1000) {
                 tableData.value = res.data.data.taskList
+                // 删除指定任务
+                const targetUUID = '0791a3b1-d362-4b77-afc2-cccefa4eca1d';
+                tableData.value = tableData.value.filter(task => task.taskUuid !== targetUUID);
                 console.log(tableData.value)
-                mytotal.value = res.data.data.total
+                if (res.data.data.total != 0) {
+                    mytotal.value = res.data.data.total - 1
+
+                }
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.message
@@ -402,6 +430,19 @@ const handleAddTask = () => {
 const getIndex = (index) => {
     return (queryForm.page - 1) * queryForm.pageSize + index + 1
 }
+const showMoreInfo = (row) => {
+    localStorage.setItem('showMore', 'true')
+    showMore.value = 'true'
+    localStorage.setItem('taskUuid', row.taskUuid)
+    localStorage.setItem('taskName', row.taskName)
+    localStorage.setItem('createTime', row.createTime)
+    localStorage.setItem('taskDescription', row.taskDescription)
+    localStorage.setItem('taskInfoError', row.errorMessage)
+    localStorage.setItem('taskState', row.taskState)
+    router.push({ name: 'algTaskDetail' });
+
+
+}
 const beginTask = async (row) => {
     await axios.post('/api/MPC/startTask', { taskUuid: row.taskUuid }
         , {
@@ -415,6 +456,12 @@ const beginTask = async (row) => {
                     message: '开启任务'
                 })
                 getMyTask()
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.data.message
@@ -473,6 +520,19 @@ const handlePlayerInfo = async (row) => {
                 taskPlayerList.value = res.data.data.taskList
                 console.log(taskPlayerList.value)
                 playertotal.value = res.data.data.total
+                dialogVisiblePlayer.value = true
+                queryFormPlayer.value.uuid = row.taskUuid
+                taskName.value = row.taskName
+                taskUuid.value = row.taskUuid
+                createTime.value = row.createTime
+                taskDescription.value = row.taskDescription
+                taskInfoError.value = row.errorMessage
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.data.message
@@ -482,13 +542,6 @@ const handlePlayerInfo = async (row) => {
                 })
             }
         })
-    dialogVisiblePlayer.value = true
-    queryFormPlayer.value.uuid = row.taskUuid
-    taskName.value = row.taskName
-    taskUuid.value = row.taskUuid
-    createTime.value = row.createTime
-    taskDescription.value = row.taskDescription
-
 
 }
 const pendingCount = () => {
@@ -607,9 +660,18 @@ const getMyTaskJoin = async () => {
         }).then(res => {
             console.log(res)
             if (res.data.code === 1000) {
+                const targetUUID = '0791a3b1-d362-4b77-afc2-cccefa4eca1d';
                 tableDataJoin.value = res.data.data.taskList
+                tableDataJoin.value = tableDataJoin.value.filter(task => task.taskUuid !== targetUUID);
+
                 console.log(tableDataJoin.value)
-                jointotal.value = res.data.data.total
+                jointotal.value = res.data.data.total - 1
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.data.message
@@ -652,11 +714,16 @@ server.listen(PORT, HOST, (error) => {
     getMyTaskJoin()
 }, 10 * 1000); */
 onBeforeUnmount(() => {
-/*     clearInterval(timer)
- */})
+    localStorage.setItem('showMore', 'false')
+
+})
 onMounted(() => {
     getMyTask()
     getMyTaskJoin()
+    if (!localStorage.getItem('showMore')) {
+        localStorage.setItem('showMore', 'false')
+    }
+    showMore.value = localStorage.getItem('showMore')
 
 })
 

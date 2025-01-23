@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { getUserInfoAPI } from '@/apis/users'
 import { ElMessage } from 'element-plus'
+import router from '@/router/index.js';  // 导入路由实例
 
 export const useUserStore = defineStore(
   'user',
@@ -16,7 +17,15 @@ export const useUserStore = defineStore(
       if (res.code === 1000) {
         userInfo.value = res.data
         console.log(userInfo.value)
-      } else {
+      } else if (res.code === 1006) {
+        ElMessage({ type: 'warning', message: 'token过期，请重新登录' })
+        setTimeout(() => {
+          router.push({ path: '/login' }); // 确保路径和名称正确
+        }, 500); // 避免动画加载导致页面阻塞
+        return
+      }
+
+      else {
         ElMessage({
           type: 'error',
           messsage: res.messsage

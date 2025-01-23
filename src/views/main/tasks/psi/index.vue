@@ -1,47 +1,134 @@
 <template>
 
-    <div class="flex justify-between items-center flex-wrap">
-        <el-card>
-            <template #header>
-                <div class="card-header">
-                    <span>
-                        <h2>
-                            隐私求交
-                        </h2>
-                    </span>
-                </div>
-            </template>
+    <div v-if="showMore === 'false'">
+        <div class="flex justify-between items-center flex-wrap">
+            <el-card>
+                <template #header>
+                    <div class="card-header">
+                        <span>
+                            <h2>
+                                隐私求交
+                            </h2>
+                        </span>
+                    </div>
+                </template>
 
-            <el-tabs v-model="activeName" type="card" @tab-click="handleClick">
+                <el-tabs v-model="activeName" type="card" @tab-click="handleClick">
 
-                <el-tab-pane class="demo-tabs" name="myUpload">
-                    <template #label>
-                        我发起的
-                        <span>&nbsp;({{ mytotal }})&nbsp;</span>
-                        <!--                         <el-badge v-if="begin != 0" type="warning" :value="begin" size="mini"></el-badge>
+                    <el-tab-pane class="demo-tabs" name="myUpload">
+                        <template #label>
+                            我发起的
+                            <span>&nbsp;({{ mytotal }})&nbsp;</span>
+                            <!--                         <el-badge v-if="begin != 0" type="warning" :value="begin" size="mini"></el-badge>
  --> </template>
-                    <div style="max-width: 1250px;">
+                        <div style="max-width: 1250px;">
+                            <el-row :gutter="20" type="flex" jusify="end" style="text-align: right;" class="header">
+
+                                <el-col :span="7">
+                                    <el-input placeholder="请输入搜索的任务名称" clearable
+                                        v-model="queryForm.queryName"></el-input></el-col>
+                                <el-button type="primary" :icon="Search" @click="getMyTask">{{ $t('table.search')
+                                    }}</el-button>
+
+                                <el-button type="primary" @click="handleDialog">
+                                    <el-icon style="margin-right: 10px">
+                                        <el-icon>
+                                            <Plus />
+                                        </el-icon>
+                                    </el-icon>隐私求交
+                                </el-button>
+
+
+                            </el-row>
+                            <el-table :data="tableData" stripe
+                                :header-cell-style="{ background: '#f5f7fa', color: '#606266', border: 0 }"
+                                :cell-style="cellStyleMy" style="max-width: 1250px;" border>
+                                <el-table-column type="index" label="序号" width="60">
+                                    <template #default="{ $index }">
+                                        {{ (queryForm.page - 1) * queryForm.pageSize + $index + 1 }}
+                                    </template>
+                                </el-table-column>
+
+                                <el-table-column :width="item.width" :prop="item.prop" :label="item.label"
+                                    v-for="(item, index) in taskOptions" :key="index">
+                                    <template v-slot="{ row }" align="center" v-if="item.label === '任务状态'">
+                                        <template v-if="row.taskState === 0">
+                                            <a-badge status="success" text="成功" />
+
+                                        </template>
+                                        <template v-else-if="row.taskState === 1">
+                                            <a-badge status="error" text="失败" />
+
+                                        </template>
+                                        <template v-else-if="row.taskState === 2">
+                                            <a-badge status="processing" text="进行中" /> </template>
+                                        <template v-else-if="row.taskState === 3">
+                                            <a-badge state="processing" color="purple" text="待确认" />
+                                        </template>
+                                        <template v-else-if="row.taskState === 4" effect="dark">
+                                            <a-badge status="processing" color="yellow" text="可进行" />
+                                        </template>
+                                        <template v-else-if="row.taskState === 5" effect="dark">
+                                            <a-badge color="magenta" text="拒绝"></a-badge>
+                                        </template>
+                                    </template>
+                                    <template v-slot="{ row }" align="center" v-if="item.label === '任务类型'">
+
+                                        <span>隐私求交</span>
+
+                                    </template>
+                                </el-table-column>
+                                <el-table-column fixed="right" label="操作" width="160px" align="center">
+                                    <template #default="{ row }">
+                                        <!--                                     <el-tooltip class="item" effect="light" content="参与者信息" placement="top">
+                                        <el-button type="success" size="small" icon="Search" label="查看"
+                                            @click="handlePlayerInfo(row)" />
+                                    </el-tooltip> -->
+                                        <el-tooltip class="item" effect="light" content="查看" placement="top">
+                                            <el-button type="success" size="small" icon="Search" label="查看"
+                                                @click="showMoreInfo(row)" />
+                                        </el-tooltip>
+                                        <el-tooltip v-if="row.taskState === 4" class="item" effect="light"
+                                            content="开始进行" placement="top">
+                                            <el-button type="warning" size="small" icon="CaretRight" label="进行"
+                                                @click="handleBegin(row)" />
+                                        </el-tooltip>
+                                        <!--     <el-button type="primary" size="small" :icon="Edit" @click="handleDialogValue(row)">编辑</el-button>
+                    <el-button type="danger" size="small" :icon="Delete" @click="delUser(row)">删除</el-button> -->
+                                    </template>
+                                </el-table-column>
+
+                            </el-table>
+                            <div class="pagination-container">
+                                <el-pagination v-model:current-page="queryForm.page"
+                                    v-model:page-size="queryForm.pageSize" :page-sizes="[2, 5, 10, 15]" :small="small"
+                                    :disabled="disabled" :background="background"
+                                    layout="mytotal, sizes, prev, pager, next, jumper" :total="mytotal"
+                                    @size-change="handleSizeChange" @current-change="handleCurrentChange" />
+                            </div>
+                        </div>
+                    </el-tab-pane>
+                    <el-tab-pane label="我参与的">
+                        <template #label>
+                            我参与的
+                            <span>&nbsp;({{ jointotal }})&nbsp;</span>
+                            <!--                         <el-badge v-if="pending != 0" :value="pending" size="mini"></el-badge>
+ --> </template>
                         <el-row :gutter="20" type="flex" jusify="end" style="text-align: right;" class="header">
 
                             <el-col :span="7">
                                 <el-input placeholder="请输入搜索的任务名称" clearable
-                                    v-model="queryForm.queryName"></el-input></el-col>
-                            <el-button type="primary" :icon="Search" @click="getMyTask">{{ $t('table.search')
+                                    v-model="queryFormJoin.queryName"></el-input></el-col>
+                            <el-button type="primary" :icon="Search" @click="getMyTaskJoin">{{ $t('table.search')
                                 }}</el-button>
 
-                            <el-button type="primary" @click="handleDialog">
-                                <el-icon style="margin-right: 10px">
-                                    <el-icon>
-                                        <Plus />
-                                    </el-icon>
-                                </el-icon>隐私求交
-                            </el-button>
 
 
                         </el-row>
-                        <el-table :data="tableData" stripe
+                        <el-table :data="tableDataJoin" stripe
                             :header-cell-style="{ background: '#f5f7fa', color: '#606266', border: 0 }"
-                            :cell-style="cellStyleMy" style="max-width: 1250px;" border>
+                            style="max-width: 1250px;" :cell-style="cellStyleJoin" :row-class-name="tableRowClassName"
+                            border>
                             <el-table-column type="index" label="序号" width="60">
                                 <template #default="{ $index }">
                                     {{ (queryForm.page - 1) * queryForm.pageSize + $index + 1 }}
@@ -49,169 +136,95 @@
                             </el-table-column>
 
                             <el-table-column :width="item.width" :prop="item.prop" :label="item.label"
-                                v-for="(item, index) in taskOptions" :key="index">
-                                <template v-slot="{ row }" align="center" v-if="item.label === '任务状态'">
-                                    <template v-if="row.taskState === 0">
-                                        <a-badge status="success" text="成功" />
+                                v-for="(item, index) in taskOptionsJoin" :key="index">
+                                <template v-slot="{ row }" align="center" v-if="item.label === '编号'" v-show="false">
 
+                                </template>
+                                <template v-slot="{ row }" align="center" v-if="item.label === '状态'">
+                                    <template v-if="row.state === 0">
+                                        <span class="state accept">已接受</span>
                                     </template>
-                                    <template v-else-if="row.taskState === 1">
-                                        <a-badge status="error" text="失败" />
-
+                                    <template v-if="row.state === 1">
+                                        <span class="state reject">已拒绝</span>
                                     </template>
-                                    <template v-else-if="row.taskState === 2">
-                                        <a-badge status="processing" text="进行中" /> </template>
-                                    <template v-else-if="row.taskState === 3">
-                                        <a-badge state="processing" color="purple" text="待确认" />
-                                    </template>
-                                    <template v-else-if="row.taskState === 4" effect="dark">
-                                        <a-badge status="processing" color="yellow" text="可进行" />
-                                    </template>
-                                    <template v-else-if="row.taskState === 5" effect="dark">
-                                        <a-badge color="magenta" text="拒绝"></a-badge>
+                                    <template v-if="row.state === 2">
+                                        <span class="state wait">待确认</span>
                                     </template>
                                 </template>
-                                <template v-slot="{ row }" align="center" v-if="item.label === '任务类型'">
-                                    <template v-if="row.tasktype">
-                                        <span>匿踪查询</span>
-                                    </template>
+
+                                <template v-slot="{ row }" align="center" style="background-color: #79bbff;"
+                                    v-if="item.label === '状态' && item.state === 2">
+                                </template>
+                                <template v-slot="{ row }" align="center" v-if="item.label === '结果接收'">
+                                    <template v-if="row.isReceiveResult === 0">
+                                        <el-icon>
+                                            <Close />
+                                        </el-icon></template>
+                                    <template v-else-if="row.isReceiveResult === 1 || row.isReceiveResult === 2">
+                                        <el-icon>
+                                            <Check />
+                                        </el-icon></template>
 
                                 </template>
                             </el-table-column>
                             <el-table-column fixed="right" label="操作" width="160px" align="center">
                                 <template #default="{ row }">
-                                    <el-tooltip class="item" effect="light" content="参与者信息" placement="top">
-                                        <el-button type="success" size="small" icon="Search" label="查看"
-                                            @click="handlePlayerInfo(row)" />
+                                    <el-tooltip class="item" effect="light" content="处理" placement="top">
+                                        <el-button type="primary" size="small" @click="handleAccept(row)"><el-icon>
+                                                <Edit />
+                                            </el-icon></el-button>
+                                    </el-tooltip>
+                                    <el-button v-if="row.state === 0" type="success"
+                                        @click="showUploadDataSourceInfo(row)" size="small">数据源</el-button>
+                                    <el-button v-if="row.state === 1" type="danger" size="small">已拒绝</el-button>
+                                    <el-button v-if="row.state === 2" type="success" size="small"
+                                        @click="handleAccept(row)">接受</el-button>
+                                    <el-button v-if="row.state === 2" type="danger" size="small"
+                                        @click="handleReject(row)">拒绝</el-button>
+                                    <el-tooltip v-if="row.isReceiveResult === 2" class="item" effect="light"
+                                        content="下载" placement="top">
+                                        <el-button type="danger" size="small" icon="Download" label="下载"
+                                            @click="handleDownLoad(row)" />
                                     </el-tooltip>
 
-                                    <el-tooltip v-if="row.taskState === 4" class="item" effect="light" content="开始进行"
-                                        placement="top">
-                                        <el-button type="warning" size="small" icon="CaretRight" label="进行"
-                                            @click="handleBegin(row)" />
-                                    </el-tooltip>
                                     <!--     <el-button type="primary" size="small" :icon="Edit" @click="handleDialogValue(row)">编辑</el-button>
                     <el-button type="danger" size="small" :icon="Delete" @click="delUser(row)">删除</el-button> -->
                                 </template>
                             </el-table-column>
-
                         </el-table>
-                        <div class="pagination-container">
-                            <el-pagination v-model:current-page="queryForm.page" v-model:page-size="queryForm.pageSize"
-                                :page-sizes="[2, 5, 10, 15]" :small="small" :disabled="disabled"
-                                :background="background" layout="mytotal, sizes, prev, pager, next, jumper"
-                                :total="mytotal" @size-change="handleSizeChange"
-                                @current-change="handleCurrentChange" />
+                        <div class="pagination-container" style="max-width: 1250px;">
+                            <el-pagination v-model:current-page="queryFormJoin.page"
+                                v-model:page-size="queryFormJoin.pageSize" :page-sizes="[2, 5, 10, 15]" :small="small"
+                                :disabled="disabled" :background="background"
+                                layout="mytotal, sizes, prev, pager, next, jumper" :total="jointotal"
+                                @size-change="handleSizeChangeJoin" @current-change="handleCurrentChangeJoin" />
                         </div>
-                    </div>
-                </el-tab-pane>
-                <el-tab-pane label="我参与的">
-                    <template #label>
-                        我参与的
-                        <span>&nbsp;({{ jointotal }})&nbsp;</span>
-                        <!--                         <el-badge v-if="pending != 0" :value="pending" size="mini"></el-badge>
- --> </template>
-                    <el-row :gutter="20" type="flex" jusify="end" style="text-align: right;" class="header">
+                    </el-tab-pane>
 
-                        <el-col :span="7">
-                            <el-input placeholder="请输入搜索的任务名称" clearable
-                                v-model="queryFormJoin.queryName"></el-input></el-col>
-                        <el-button type="primary" :icon="Search" @click="getMyTaskJoin">{{ $t('table.search')
-                            }}</el-button>
+                </el-tabs>
 
+            </el-card>
+            <psiAddDialog v-model="dialogVisible" @initTaskList="getMyTask" @initMyJoinList="getMyTaskJoin"
+                v-if="dialogVisible" />
+            <PlayerDialog v-model="dialogVisiblePlayer" :dialogTableValue="taskPlayerList" v-if="dialogVisiblePlayer"
+                :taskName="taskName" :taskUuid="taskUuid" :taskInfoError="taskInfoError" :createTime="createTime"
+                :taskDescription="taskDescription" />
+            <HandleTaskInvitationsDialoag v-model="dialogVisibleAccept" :taskInfo="taskInfo"
+                @initMyJoin="getMyTaskJoin" />
+            <HandleRejectDialog v-model="centerDialogVisible" :taskInfo="taskInfo" @initMyJoin="getMyTaskJoin" />
+            <UploadDataSourceInfoDialog v-model="dialogVisibleDataSource" :taskInfo="taskInfo"
+                @initMyJoin="getMyTaskJoin" />
+            <startTaskDialog v-model="dialogVisibleStartTask" :taskInfo="taskInfo" @initMyJoin="getMyTask" />
 
-
-                    </el-row>
-                    <el-table :data="tableDataJoin" stripe
-                        :header-cell-style="{ background: '#f5f7fa', color: '#606266', border: 0 }"
-                        style="max-width: 1250px;" :cell-style="cellStyleJoin" :row-class-name="tableRowClassName"
-                        border>
-                        <el-table-column type="index" label="序号" width="60">
-                            <template #default="{ $index }">
-                                {{ (queryForm.page - 1) * queryForm.pageSize + $index + 1 }}
-                            </template>
-                        </el-table-column>
-
-                        <el-table-column :width="item.width" :prop="item.prop" :label="item.label"
-                            v-for="(item, index) in taskOptionsJoin" :key="index">
-                            <template v-slot="{ row }" align="center" v-if="item.label === '编号'" v-show="false">
-
-                            </template>
-                            <template v-slot="{ row }" align="center" v-if="item.label === '状态'">
-                                <template v-if="row.state === 0">
-                                    <span class="state accept">已接受</span>
-                                </template>
-                                <template v-if="row.state === 1">
-                                    <span class="state reject">已拒绝</span>
-                                </template>
-                                <template v-if="row.state === 2">
-                                    <span class="state wait">待确认</span>
-                                </template>
-                            </template>
-
-                            <template v-slot="{ row }" align="center" style="background-color: #79bbff;"
-                                v-if="item.label === '状态' && item.state === 2">
-                            </template>
-                            <template v-slot="{ row }" align="center" v-if="item.label === '结果接收'">
-                                <template v-if="row.isReceiveResult === 0">
-                                    <el-icon>
-                                        <Close />
-                                    </el-icon></template>
-                                <template v-else-if="row.isReceiveResult === 1 || row.isReceiveResult === 2">
-                                    <el-icon>
-                                        <Check />
-                                    </el-icon></template>
-
-                            </template>
-                        </el-table-column>
-                        <el-table-column fixed="right" label="操作" width="160px" align="center">
-                            <template #default="{ row }">
-                                <el-tooltip class="item" effect="light" content="处理" placement="top">
-                                    <el-button type="primary" size="small" @click="handleAccept(row)"><el-icon>
-                                            <Edit />
-                                        </el-icon></el-button>
-                                </el-tooltip>
-                                <el-button v-if="row.state === 0" type="success" @click="showUploadDataSourceInfo(row)"
-                                    size="small">数据源</el-button>
-                                <el-button v-if="row.state === 1" type="danger" size="small">已拒绝</el-button>
-                                <el-button v-if="row.state === 2" type="success" size="small"
-                                    @click="handleAccept(row)">接受</el-button>
-                                <el-button v-if="row.state === 2" type="danger" size="small"
-                                    @click="handleReject(row)">拒绝</el-button>
-                                <el-tooltip v-if="row.isReceiveResult === 2" class="item" effect="light" content="下载"
-                                    placement="top">
-                                    <el-button type="danger" size="small" icon="Download" label="下载"
-                                        @click="handleDownLoad(row)" />
-                                </el-tooltip>
-
-                                <!--     <el-button type="primary" size="small" :icon="Edit" @click="handleDialogValue(row)">编辑</el-button>
-                    <el-button type="danger" size="small" :icon="Delete" @click="delUser(row)">删除</el-button> -->
-                            </template>
-                        </el-table-column>
-                    </el-table>
-                    <div class="pagination-container" style="max-width: 1250px;">
-                        <el-pagination v-model:current-page="queryFormJoin.page"
-                            v-model:page-size="queryFormJoin.pageSize" :page-sizes="[2, 5, 10, 15]" :small="small"
-                            :disabled="disabled" :background="background"
-                            layout="mytotal, sizes, prev, pager, next, jumper" :total="jointotal"
-                            @size-change="handleSizeChangeJoin" @current-change="handleCurrentChangeJoin" />
-                    </div>
-                </el-tab-pane>
-
-            </el-tabs>
-
-        </el-card>
-        <psiAddDialog v-model="dialogVisible" @initTaskList="getMyTask" v-if="dialogVisible" />
-        <PlayerDialog v-model="dialogVisiblePlayer" :dialogTableValue="taskPlayerList" v-if="dialogVisiblePlayer"
-            :taskName="taskName" :taskUuid="taskUuid" :createTime="createTime" :taskDescription="taskDescription" />
-        <HandleTaskInvitationsDialoag v-model="dialogVisibleAccept" :taskInfo="taskInfo" @initMyJoin="getMyTaskJoin" />
-        <HandleRejectDialog v-model="centerDialogVisible" :taskInfo="taskInfo" @initMyJoin="getMyTaskJoin" />
-        <UploadDataSourceInfoDialog v-model="dialogVisibleDataSource" :taskInfo="taskInfo"
-            @initMyJoin="getMyTaskJoin" />
-        <startTaskDialog v-model="dialogVisibleStartTask" :taskInfo="taskInfo" @initMyJoin="getMyTask" />
-
+        </div>
     </div>
+    <div class="more-info" v-if="showMore === 'true'">
+        <transition name="fade" mode="out-in">
 
+            <RouterView />
+
+        </transition>
+    </div>
 </template>
 <script setup>
 
@@ -219,7 +232,7 @@ import startTaskDialog from './components/startTaskDialog.vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import psiAddDialog from './components/psiAddDialog.vue'
-
+import { showMore } from '../fl/isCreate'
 import { ElMessage } from 'element-plus'
 import { onMounted, ref, watch, onBeforeUnmount, nextTick } from 'vue'
 import { Search, Edit, Setting, Delete } from '@element-plus/icons-vue'
@@ -233,7 +246,7 @@ import UploadDataSourceInfoDialog from './components/uploadDataSourceInfoDialog.
 import { changeStateAPI } from '@/apis/users'
 import { isNULL } from '@/utils/filters'
 import { ElMessageBox } from 'element-plus'
-
+const taskInfoError = ref('')
 const link = document.createElement('a')
 const pending = ref(0)
 const level = localStorage.getItem('level')
@@ -279,6 +292,7 @@ const dialogVisibleDataSource = ref(false)
 const handleDialog = () => {
     dialogVisible.value = true
 }
+
 const handleDialogValue = (row) => {
     if (isNULL(row)) {
         dialogValue.value = '添加用户'
@@ -305,6 +319,12 @@ const getMyTask = async () => {
                 tableData.value = res.data.data.taskList
                 console.log(tableData.value)
                 mytotal.value = res.data.data.total
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.message
@@ -401,6 +421,12 @@ const handleBegin = async (row) => {
                     message: '开启任务'
                 })
                 getMyTask()
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.data.message
@@ -426,6 +452,7 @@ const handleAddTask = () => {
     router.replace({ name: 'stealthqueryAdd' })
 
 }
+
 const getIndex = (index) => {
     return (queryForm.page - 1) * queryForm.pageSize + index + 1
 }
@@ -442,6 +469,12 @@ const beginTask = async (row) => {
                     message: '开启任务'
                 })
                 getMyTask()
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.data.message
@@ -500,6 +533,20 @@ const handlePlayerInfo = async (row) => {
                 taskPlayerList.value = res.data.data.taskList
                 console.log(taskPlayerList.value)
                 playertotal.value = res.data.data.total
+                dialogVisiblePlayer.value = true
+                queryFormPlayer.value.uuid = row.taskUuid
+                taskName.value = row.taskName
+                taskUuid.value = row.taskUuid
+                createTime.value = row.createTime
+                taskDescription.value = row.taskDescription
+                taskInfoError.value = row.errorMessage
+            }
+            else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.data.message
@@ -509,12 +556,6 @@ const handlePlayerInfo = async (row) => {
                 })
             }
         })
-    dialogVisiblePlayer.value = true
-    queryFormPlayer.value.uuid = row.taskUuid
-    taskName.value = row.taskName
-    taskUuid.value = row.taskUuid
-    createTime.value = row.createTime
-    taskDescription.value = row.taskDescription
 
 
 }
@@ -550,31 +591,103 @@ const handleDownLoad = async (row) => {
         }
     )
         .then(async () => {
+            if (row.isOutputCompleted === 0 || row.isOutputCompleted === 1) {
+                await axios.post('/api/PSI/downloadResultByUuid', { taskUuid: row.taskUuid, paramsType: row.isOutputCompleted }
+                    , {
+                        headers: {
+                            Authorization: localStorage.getItem('token'),
+                        },
+                        responseType: 'blob',
+                    }).then(res => {
+                        console.log(res)
+                        const data = res.data
+                        if (data.hasOwnProperty('code')) {
+                            ElMessage({
+                                type: 'error',
+                                message: '下载失败'
+                            })
+                        } else if (res.data.code === 1006) {
+                            ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                            setTimeout(() => {
+                                router.push({ path: '/login' }); // 确保路径和名称正确
+                            }, 500); // 避免动画加载导致页面阻塞
+                            return
+                        }
+                        else {
+                            const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+                            const objectUrl = URL.createObjectURL(blob) // 创建URL
+                            link.href = objectUrl
+                            link.download = `psi-${row.isOutputCompleted}-` + row.taskUuid// 自定义文件名
+                            link.click() // 下载文件
+                            URL.revokeObjectURL(objectUrl); // 释放内存
+                        }
+                    })
+            }
+            if (row.isOutputCompleted === 2) {
+
+                await axios.post('/api/PSI/downloadResultByUuid', { taskUuid: row.taskUuid, paramsType: 0 }
+                    , {
+                        headers: {
+                            Authorization: localStorage.getItem('token'),
+                        },
+                        responseType: 'blob',
+                    }).then(res => {
+                        console.log(res)
+                        const data = res.data
+                        if (data.hasOwnProperty('code')) {
+                            ElMessage({
+                                type: 'error',
+                                message: '下载失败'
+                            })
+                        } else if (res.data.code === 1006) {
+                            ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                            setTimeout(() => {
+                                router.push({ path: '/login' }); // 确保路径和名称正确
+                            }, 500); // 避免动画加载导致页面阻塞
+                            return
+                        }
+                        else {
+                            const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+                            const objectUrl = URL.createObjectURL(blob) // 创建URL
+                            link.href = objectUrl
+                            link.download = 'psi-0-' + row.taskUuid// 自定义文件名
+                            link.click() // 下载文件
+                            URL.revokeObjectURL(objectUrl); // 释放内存
+                        }
+                    })
+                await axios.post('/api/PSI/downloadResultByUuid', { taskUuid: row.taskUuid, paramsType: 1 }
+                    , {
+                        headers: {
+                            Authorization: localStorage.getItem('token'),
+                        },
+                        responseType: 'blob',
+                    }).then(res => {
+                        console.log(res)
+                        const data = res.data
+                        if (data.hasOwnProperty('code')) {
+                            ElMessage({
+                                type: 'error',
+                                message: '下载失败'
+                            })
+                        } else if (res.data.code === 1006) {
+                            ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                            setTimeout(() => {
+                                router.push({ path: '/login' }); // 确保路径和名称正确
+                            }, 500); // 避免动画加载导致页面阻塞
+                            return
+                        }
+                        else {
+                            const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+                            const objectUrl = URL.createObjectURL(blob) // 创建URL
+                            link.href = objectUrl
+                            link.download = 'psi-1-' + row.taskUuid// 自定义文件名
+                            link.click() // 下载文件
+                            URL.revokeObjectURL(objectUrl); // 释放内存
+                        }
+                    })
+            }
             //const res = await downloadResultByUuidAPI({ taskUuid: row.taskUuid })
-            axios.post('/api/PSI/downloadResultByUuid', { taskUuid: row.taskUuid }
-                , {
-                    headers: {
-                        Authorization: localStorage.getItem('token'),
-                    },
-                    responseType: 'blob',
-                }).then(res => {
-                    console.log(res)
-                    const data = res.data
-                    if (data.hasOwnProperty('code')) {
-                        ElMessage({
-                            type: 'error',
-                            message: '下载失败'
-                        })
-                    }
-                    else {
-                        const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-                        const objectUrl = URL.createObjectURL(blob) // 创建URL
-                        link.href = objectUrl
-                        link.download = 'psi-' + row.taskUuid// 自定义文件名
-                        link.click() // 下载文件
-                        URL.revokeObjectURL(objectUrl); // 释放内存
-                    }
-                })
+
             /*  const blob = new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
              const objectUrl = URL.createObjectURL(blob) // 创建URL
              link.href = objectUrl
@@ -637,6 +750,12 @@ const getMyTaskJoin = async () => {
                 tableDataJoin.value = res.data.data.taskList
                 console.log(tableDataJoin.value)
                 jointotal.value = res.data.data.total
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.data.message
@@ -675,11 +794,27 @@ server.listen(PORT, HOST, (error) => {
 
  */
 
+const showMoreInfo = (row) => {
+    localStorage.setItem('showMore', 'true')
+    showMore.value = 'true'
+    localStorage.setItem('taskUuid', row.taskUuid)
+    localStorage.setItem('taskName', row.taskName)
+    localStorage.setItem('createTime', row.createTime)
+    localStorage.setItem('taskDescription', row.taskDescription)
+    localStorage.setItem('taskInfoError', row.errorMessage)
+    localStorage.setItem('taskState', row.taskState)
+    localStorage.setItem('isOutputCompleted', row.isOutputCompleted)
+    router.push({ name: 'psiTaskDetail' });
 
+
+}
 onMounted(() => {
     getMyTask()
     getMyTaskJoin()
-
+    if (!localStorage.getItem('showMore')) {
+        localStorage.setItem('showMore', 'false')
+    }
+    showMore.value = localStorage.getItem('showMore')
 })
 
 </script>

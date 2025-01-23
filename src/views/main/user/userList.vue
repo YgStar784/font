@@ -56,6 +56,8 @@ import { isNULL } from '@/utils/filters'
 import { ElMessageBox } from 'element-plus'
 import { delUserAPI } from '@/apis/users'
 import { useUserStore } from '@/stores/user';
+import { useRouter } from 'vue-router'
+const router = useRouter()
 const level = localStorage.getItem('level')
 const queryForm = ref({
     queryName: '',
@@ -88,6 +90,12 @@ const getUsers = async () => {
         tableData.value = res.data.userList
         console.log(tableData.value)
         total.value = res.data.total
+    } else if (res.code === 1006) {
+        ElMessage({ type: 'warning', message: 'token过期，请重新登录' })
+        setTimeout(() => {
+            router.push({ path: '/login' }); // 确保路径和名称正确
+        }, 500); // 避免动画加载导致页面阻塞
+        return
     }
     else {
         const msg = res.message
@@ -119,16 +127,18 @@ const changeState = async (info) => {
                 message: "用户冻结成功！",
                 type: 'success'
             })
-        } else {
-            ElMessage({
-                message: "用户激活成功！",
-                type: 'success'
-            })
         }
-    } else {
+    } else if (res.code === 1006) {
+        ElMessage({ type: 'warning', message: 'token过期，请重新登录' })
+        setTimeout(() => {
+            router.push({ path: '/login' }); // 确保路径和名称正确
+        }, 500); // 避免动画加载导致页面阻塞
+        return
+    }
+    else {
         ElMessage({
-            message: res.message,
-            type: 'error'
+            message: "用户激活成功！",
+            type: 'success'
         })
     }
     // console.log(res)

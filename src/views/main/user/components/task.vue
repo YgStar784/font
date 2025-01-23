@@ -34,6 +34,11 @@
     </div>
 </template>
 <script setup>
+import { onBeforeUnmount } from 'vue'
+onBeforeUnmount(() => {
+    localStorage.setItem('showMore', 'false')
+
+})
 </script>
 
 

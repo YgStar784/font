@@ -19,11 +19,6 @@ export const taskOptionsJoin = [
 
 
     {
-        label: '任务类型',
-        prop: 'taskType',
-        width: 'auto',
-    },
-    {
         label: '创建时间',
         prop: 'createTime',
         width: 'auto',

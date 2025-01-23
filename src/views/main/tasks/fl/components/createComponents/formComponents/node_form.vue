@@ -80,7 +80,7 @@
                     </a-popconfirm>
                 </a-form-item>
                 <a-form-item>
-                    <a-button type="primary" @click="onSubmit" disabled>
+                    <a-button type="primary" @click="onSubmit">
                         保存
                     </a-button>
                 </a-form-item>
@@ -89,7 +89,7 @@
     </div>
 </template>
 <script setup>
-import { reactive, ref, defineProps } from 'vue';
+import { reactive, ref, defineProps, watch } from 'vue';
 import SomeTools from '@/utils/someTools'
 import { SendOutlined, CheckCircleOutlined, CloseCircleOutlined, UserOutlined, ItalicOutlined, HeatMapOutlined } from '@ant-design/icons-vue';
 const formTitle = '节点信息'
@@ -110,6 +110,7 @@ const props = defineProps({
 })
 const CurrentNodeInfo = ref(props.nodeInfo)
 console.log(props.nodeInfo);
+
 //刷新节点信息
 const refreshConfirm = e => {
     console.log(e);
@@ -123,7 +124,14 @@ const onSubmit = () => {
     // 使用 `emit` 触发事件，将 `updatedFormula` 传递给父组件
     emits('updateNodeInfo', CurrentNodeInfo.value);
 };
-
+// 监听父组件传递的新数据，更新本地副本
+watch(
+    () => props.nodeInfo, // 监听 props.nodeInfo 的变化
+    (newVal) => {
+        CurrentNodeInfo.value = { ...newVal }; // 深拷贝新值以避免直接引用
+    },
+    { immediate: true, deep: true } // 立即触发一次回调，并且深度监听
+);
 
 </script>
 

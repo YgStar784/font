@@ -7,7 +7,7 @@
             <el-header>
                 <Header />
             </el-header>
-            <el-main :style="{ padding: showCreate ? '0' : '20px' }">
+            <el-main style="padding: 0;height: 100%;">
 
                 <router-view />
 
@@ -66,5 +66,6 @@ $hideSideBarWidth: 67px;
 
 ::v-deep.el-header {
     padding: 0;
+
 }
 </style>

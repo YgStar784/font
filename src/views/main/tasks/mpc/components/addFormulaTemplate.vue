@@ -199,6 +199,14 @@ const addOperand = () => {
     // 使用正则去除括号，并只提取实际的最后一个字母
     const match = formula.match(/[A-Z](?!.*[A-Z])/);  // 匹配最后一个字母，不管是否有括号
     const lastOperand = match ? match[0] : "A"; // 获取最后有效的操作数
+    // 判断是否已经到达 'Z'
+    if (lastOperand === "Z") {
+        ElMessage({
+            message: '操作数已达到最大限制，无法再添加',
+            type: 'warning',
+        });
+        return;
+    }
 
     // 计算下一个操作数
     const nextOperand = String.fromCharCode(lastOperand.charCodeAt(0) + 1);

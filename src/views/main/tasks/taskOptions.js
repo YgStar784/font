@@ -43,11 +43,7 @@ export const taskOptions = [
         width: 150,
     },
 
-    {
-        label: '文件名',
-        prop: 'fileName',
-        width: 160,
-    },
+
     /*     {
             label: '文件名',
             prop: 'fileName',

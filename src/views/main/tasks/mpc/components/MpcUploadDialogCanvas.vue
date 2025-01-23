@@ -54,6 +54,13 @@
                         <el-button text bg>{{ selectedComponent.value.target.value.username }}</el-button>
                     </div>
                 </transition>
+                <transition name="fade" mode="out-in">
+                    <div class="selectedComponent-func"
+                        v-if="selectedComponent && selectedComponent.type === 'function'">
+                        <el-button type="warning" link><span>Function</span></el-button>
+                        <el-button text bg>{{ selectedComponent.value }}</el-button>
+                    </div>
+                </transition>
             </div>
             <div class="right-buttons">
 
@@ -109,8 +116,7 @@
                 <div class="sidebar-section components-section">
                     <div class="sidebar-title">公式</div>
                     <div class="component-list">
-                        <div v-for="(formula, index) in groupedConnections" :key="index" class="formula-item"
-                            draggable="true">
+                        <div v-for="(formula, index) in groupedConnections" :key="index" class="formula-item">
                             {{ formula }}
                         </div>
                     </div>
@@ -224,9 +230,11 @@ import _, { repeat } from 'lodash';
 import { $, compareOperatorSequences, validateFormula, extractUsernames, extractUsernamesWithFunc, isValidFormula } from '@/utils/utils'
 import AddFormulaTemplate from './addFormulaTemplate.vue'
 import { NFormItem, NButton, NCheckbox, NCheckboxGroup, NSpace } from 'naive-ui'
+import { useRouter } from 'vue-router';
 // 定义用户组件的状态变化控制
 const animationState = new Map();  // 存储每个组件的动画状态
 // 定义初始和目标状态
+const router = useRouter()
 const initialScale = 1; // 初始缩放比例
 const targetScale = 1.02; // 悬停时的目标缩放比例
 const initialColor = '#f0f8ff'; // 初始背景色
@@ -281,7 +289,7 @@ const componentsOnCanvas = ref([]); // 画布中的组件
 const dragging = ref(false); // 是否处于拖动状态
 const dragOffset = ref({ x: 0, y: 0 }); // 拖动的偏移量
 const selectedComponent = ref(null); // 当前选中的组件
-const operators = ref(['+', '-', '*', '/', '(', ')', 'Max', 'Min']);
+const operators = ref(['+', '-', '*', '/', '(', ')', 'Max', 'Min', 'Min_Value', 'Max_Value']);
 const alphabet = ref(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']);
 const isDragging = ref(false); // 是否正在拖动
 const isRightMouseDown = ref(false); // 是否右键按下
@@ -314,7 +322,7 @@ const tempUserList = ref([])
 var getTime = new Date().getTime(); //获取到当前时间戳
 var time = new Date(getTime); //创建一个日期对象
 const formRef = ref(null)
-const emits = defineEmits(['update:modelValue', 'initTaskList'])
+const emits = defineEmits(['update:modelValue', 'initTaskList', 'initMyInivList'])
 const formulaTemplateName = ref('')  //任务提交时模版字符串的代号
 const userSelectedList = ref([])
 const totalUser = ref(0)
@@ -909,6 +917,7 @@ const completeConnection = (targetComponent) => {
         // 连接完成后退出连接模式
         if (!isCtrlOrCmdPressed.value) {
             isConnecting.value = false;
+
         }
         console.log('connections', connections.value);
         selectedComponent.value = targetComponent;
@@ -946,7 +955,7 @@ const onDrop = (event) => {
         // 根据拖拽的类型创建组件
         let newComponent;
         if (operators.value.includes(draggingComponent.value)) {
-            if (draggingComponent.value === 'Max' || draggingComponent.value === 'Min') {
+            if (draggingComponent.value === 'Max' || draggingComponent.value === 'Min' || draggingComponent.value === 'Max_Value' || draggingComponent.value === 'Min_Value') {
                 newComponent = {
                     type: 'function',
                     value: draggingComponent.value,
@@ -1736,8 +1745,10 @@ const drawCanvas = () => {
 
         } else if (component.type === 'function') {
             // 绘制 function 形状
-
-            const circleRadius = 25; // 圆的半径
+            let circleRadius = 25
+            /*             if (component.value === 'Max_Value' || component.value === 'Min_Value') {
+                            circleRadius = 50
+                        } */
             // 动态计算矩形宽度和文本
             const userText = component.users.length > 0
                 ? `( ${component.users.join(', ')} )`
@@ -1747,13 +1758,30 @@ const drawCanvas = () => {
             const rectWidth = Math.max(ctx.value.measureText(userText).width + 20, 140); // 确保宽度准确
             const rectHeight = 40; // 矩形高度
             // 绘制圆形
-            ctx.value.beginPath();
-            ctx.value.arc(component.x + circleRadius, component.y + circleRadius, circleRadius, 0, 2 * Math.PI);
-            ctx.value.fillStyle = '#add8e6';
-            ctx.value.fill();
-            ctx.value.strokeStyle = '#4682b4';
-            ctx.value.stroke();
+            if (component.value === 'Max' || component.value === 'Min') {
+                ctx.value.beginPath();
+                ctx.value.arc(component.x + circleRadius, component.y + circleRadius, circleRadius, 0, 2 * Math.PI);
+                ctx.value.fillStyle = '#add8e6';
+                ctx.value.fill();
+                ctx.value.strokeStyle = '#4682b4';
+                ctx.value.stroke();
 
+            } else {
+                ctx.value.beginPath();
+                ctx.value.ellipse(
+                    component.x + circleRadius,  // 圆心的 x 坐标
+                    component.y + circleRadius,  // 圆心的 y 坐标
+                    circleRadius * 2,          // 水平半径，调整为比垂直半径大一些以形成椭圆
+                    circleRadius,                // 垂直半径
+                    0,                           // 旋转角度
+                    0,                           // 开始角度
+                    2 * Math.PI                  // 结束角度
+                );
+                ctx.value.fillStyle = '#add8e6';
+                ctx.value.fill();
+                ctx.value.strokeStyle = '#4682b4';
+                ctx.value.stroke();
+            }
             // 绘制圆内的文本
             ctx.value.font = '16px Arial';
             ctx.value.fillStyle = 'black';
@@ -1762,7 +1790,10 @@ const drawCanvas = () => {
             ctx.value.fillText(component.value, component.x + circleRadius, component.y + circleRadius);
 
             // 绘制矩形
-            const rectX = component.x + circleRadius * 2;
+            let rectX = component.x + circleRadius * 2
+            if (component.value === 'Max_Value' || component.value === 'Min_Value') {
+                rectX = component.x + circleRadius * 3
+            }
             const rectY = component.y + (circleRadius - rectHeight / 2);
             ctx.value.fillStyle = '#f0f8ff';
             ctx.value.fillRect(rectX, rectY, rectWidth, rectHeight);
@@ -1782,6 +1813,10 @@ const drawCanvas = () => {
 
             }
             component.width = circleRadius * 2 + rectWidth; // 包括圆形和矩形的总宽度
+
+            if (component.value === 'Max_Value' || component.value === 'Min_Value') {
+                component.width = circleRadius * 4 + rectWidth; // 包括圆形和矩形的总宽度
+            }
             component.height = Math.max(circleRadius * 2, rectHeight); // 确保高度为圆形或矩形中较大的那个
             if (component.bracket) {
                 let leftCount = 0, rightCount = 0;
@@ -1813,7 +1848,14 @@ const drawCanvas = () => {
     if (selectedComponent.value && selectedComponent.value.type != 'conn') {
         ctx.value.strokeStyle = 'red';
         ctx.value.lineWidth = 2;
-        ctx.value.strokeRect(selectedComponent.value.x - 5, selectedComponent.value.y - 5, selectedComponent.value.width + 10, selectedComponent.value.height + 10);
+
+
+        if (selectedComponent.value.value === 'Max_Value' || selectedComponent.value.value === 'Min_Value') {
+            ctx.value.strokeRect(selectedComponent.value.x - 30, selectedComponent.value.y - 5, selectedComponent.value.width + 10, selectedComponent.value.height + 10);
+
+        } else {
+            ctx.value.strokeRect(selectedComponent.value.x - 5, selectedComponent.value.y - 5, selectedComponent.value.width + 10, selectedComponent.value.height + 10);
+        }
     } else if (selectedComponent.value && selectedComponent.value.type === 'conn') {
         const { startPoint, endPoint } = findClosestEdgePoints(selectedComponent.value.value.source, selectedComponent.value.value.target);
         // 如果检测到点击的连接线，绘制椭圆形边框
@@ -2258,6 +2300,13 @@ const getUsers = async () => {
                 currentUsersList.value = res.data.data.userList
                 // console.log(currentUsersList.value);
                 totalUser.value = res.data.data.total
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                handleClose()
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.message
@@ -2333,12 +2382,12 @@ const handleConfirm = () => {
     /*     groupConnections.value.forEach(formula => {
             if (formula)
          }) */
-    dialogLoading.value = false
+
     groupedFormulaUsers.value = [];
     // 初始化 uniqueGroupUserList
     uniqueGroupUserList.value = [];
-    taskInfoDialogVisible.value = true;
     console.log('selsectedUserList.value', selsectedUserList.value);
+    let isExsitFlag = false
     groupedConnections.value.forEach((formula) => {
         const formulaUsersInfo = [];
         const userLists = extractUsernamesWithFunc(formula);
@@ -2357,14 +2406,22 @@ const handleConfirm = () => {
                 });
             } else {
                 // 如果用户未找到，可以添加提示或处理逻辑
-                ElMessage({ type: 'error', message: `未找到名为${username}的用户，请重试` });
+                isExsitFlag = true
+                return
             }
         });
+
         groupedFormulaUsers.value.push({
             formula,
             users: formulaUsersInfo,
         });
     });
+    if (isExsitFlag) {
+        ElMessage({ type: 'warning', message: `存在非法用户，请重试` });
+        dialogLoading.value = false
+        return
+    }
+    taskInfoDialogVisible.value = true;
 
     //生成唯一不存在相同用户名的数组
     // 遍历 groupedFormulaUsers 中的每个对象
@@ -2399,6 +2456,27 @@ const handleConfirm = () => {
     console.log('groupedFormulaUsers.value', groupedFormulaUsers.value);
     console.log('uniqueGroupUserList.value', uniqueGroupUserList.value);
 };
+const checkFormulaType = (formula) => {
+    // 转换为小写，确保不区分大小写匹配
+    const lowerCaseFormula = formula.toLowerCase();
+    // 检查是否包含 "max" 或 "min"
+    if (lowerCaseFormula.includes("max")) {
+        return "max";
+    } else if (lowerCaseFormula.includes("min")) {
+        return "min";
+    } else if (lowerCaseFormula.includes("max_value")) {
+        return "max_value";
+    } else if (lowerCaseFormula.includes("min_value")) {
+        return "min_value";
+    }
+    else {
+        return "arithmetic";
+    }
+}
+function normalizeString(input) {
+    // 转换为小写，并移除所有空格
+    return input.toLowerCase().replace(/\s+/g, "");
+}
 const submitTaskInfo = async () => {
     if (!taskInfoForm.value.taskName || !taskInfoForm.value.taskType) {
         ElMessage({
@@ -2448,21 +2526,15 @@ const submitTaskInfo = async () => {
             nodeInfoList: [],
         })
         taskParams.value.taskId = sendForm.value.taskUuid
-        taskParams.value.mapString = formulaInfo.formula
+        taskParams.value.mapString = normalizeString(formulaInfo.formula)
         taskParams.value.nodeNum = formulaInfo.users.length
         formulaInfo.users.forEach((user) => {
             taskParams.value.nodeInfoList.push(user)
             console.log(user);
         })
         //针对用户的选择，以及公式对taskName参数进行操作
-        if (taskInfoForm.value.taskType === 'carbon') {
-            taskParams.value.taskName = 'carbon_green_life'
-        } else if (taskInfoForm.value.taskType === 'formula') {
-            const template = formulaTemplates.value.find((item) => compareOperatorSequences(taskParams.value.mapString, item.content))
-            if (template != undefined) {
-                taskParams.value.taskName = template.name
-            }
-        }
+        console.log('formulaInfo', formulaInfo);
+        taskParams.value.taskName = checkFormulaType(formulaInfo.formula)
         //将taskParams.value推入到数组中
         console.log('taskParams.value', taskParams.value);
         sendForm.value.taskParams.push(taskParams.value)
@@ -2490,7 +2562,15 @@ const submitTaskInfo = async () => {
                     message: '任务发起成功'
                 })
                 emits('initTaskList')
+                emits('initMyInivList')
                 handleClose()
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                handleClose()
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.message
@@ -2891,6 +2971,14 @@ canvas.connecting {
     align-items: center;
     /* 为内部元素添加过渡效果 */
 
+}
+
+.selectedComponent-func {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: center;
 }
 
 /* 定义淡入淡出的过渡效果 */

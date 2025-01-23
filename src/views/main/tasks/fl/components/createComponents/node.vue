@@ -8,7 +8,7 @@
         <span class="label">
             <span class="ks" v-if="props.data.info.params.kernel_size">{{
                 props.data.info.params.kernel_size
-            }}X{{
+                }}X{{
                     props.data.info.params.kernel_size }}</span>
             {{ props.data.label }}</span>
         <span class="status" v-if="props.data.info.params?.state">

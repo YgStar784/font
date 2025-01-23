@@ -36,7 +36,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { watch } from 'vue'
-import { isCreate, showCreate } from '@/views/main/tasks/fl/isCreate'
+import { isCreate, showCreate, showMore } from '@/views/main/tasks/fl/isCreate'
 
 const route = useRoute()
 const router = useRouter()
@@ -60,12 +60,14 @@ const breadcrumbItems = computed(() => {
 // 监听路由变化，添加额外逻辑
 watch(() => route.fullPath, (newPath, oldPath) => {
     console.log('route.fullPath', route.fullPath, newPath, oldPath)
-    if (newPath === '/fl/federatedLearning') {
+    if (newPath === '/fl/federatedLearning' || newPath === '/mpc/privateSetIntersection' || newPath === '/mpc/stealthquery' || newPath === '/mpc/arithmetic') {
         // 执行某些操作 
         isCreate.value = false
         localStorage.setItem('isCreate', 'false')
         showCreate.value = 'false'
+        showMore.value = 'false'
     }
+
 })
 
 // 导航到选定路径

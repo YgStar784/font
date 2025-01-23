@@ -13,8 +13,8 @@
         </el-card>
 
         <el-card>
-            <el-form :model="form" ref="formRef" label-position="left" style="max-width: 600px;padding-left: 30px"
-                label-width="120px">
+            <el-form :model="form" ref="formRef" :rules="dynamicRules" label-position="left"
+                style="max-width: 600px;padding-left: 30px" label-width="130px">
 
                 <el-form-item label="数据源名称:" prop="dataSourceName">
                     <el-input placeholder="请输入数据源名称" v-model="form.dataSourceName" />
@@ -52,12 +52,12 @@
                     <el-form-item label="数据库用户名:" prop="uname">
                         <el-input placeholder="请输入数据库用户名" v-model="form.uname" />
                     </el-form-item>
-                    <el-form-item label="数据库用户密码:" prop="upwd">
+                    <el-form-item label-width="130px" label="数据库用户密码:" prop="upwd">
                         <el-input placeholder="请输入数据库用户密码" v-model="form.upwd" show-password />
                     </el-form-item>
                 </div>
 
-                <el-form-item label="数据源字段信息:" prop="fieldName">
+                <el-form-item label="数据源字段信息:" label-width="130px" prop="fieldName">
                     <el-input placeholder="请输入数据源的各个字段(以“，”隔开),例'id,银行名称,客户姓名,贷款金额,客户年龄,历史逾期天数'"
                         v-model="form.fieldName" type="textarea" />
                 </el-form-item>
@@ -74,18 +74,23 @@
 
             </el-form>
             <template #footer>
-                <div style="text-align: right;"> <el-button type="primary" @click="onSubmit">导入</el-button>
+
+                <div style="text-align: right;">
+                    <el-button type="defeault" @click="handleClose">返回</el-button>
+
+                    <el-button type="primary" @click="onSubmit">导入</el-button>
                 </div>
             </template>
         </el-card>
     </el-dialog>
 </template>
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import SomeTools from '@/utils/someTools'
-
+import { useRouter } from 'vue-router'
+const router = useRouter()
 const props = defineProps({
     taskInfo: {
         type: Object,
@@ -107,58 +112,134 @@ const form = ref({
     orcl: '',
     path: '',
     fieldName: '',
-    type: 0,
+    type: 1,
     state: 0,
     //dataSourceDescription: '',
 })
 
-const rules = ref({
-    dataPath: [{
-        required: true,
-        message: '路径不能为空',
-        trigger: 'blur',
-    }]
-})
+
 const emits = defineEmits(['update:modelValue', 'initMyJoin'])
 
 const handleClose = () => {
     emits('update:modelValue', false)
 }
+// IP 地址校验正则
+const ipPattern =
+    /^(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)$/;
+
+const rules = ref({
+    dataSourceName: [{ required: true, message: '数据源名称不能为空', trigger: 'blur' }],
+    path: [
+        {
+            required: true,
+            message: 'Excel文件路径不能为空',
+            trigger: 'blur',
+        },
+        {
+            pattern: /^\.\/[\w\-.]+\.xlsx$/,
+            message: '文件路径格式错误，应以 "./" 开头并以 ".xlsx" 结尾',
+            trigger: 'blur',
+        },
+    ],
+    fieldName: [{ required: true, message: '数据源字段信息不能为空', trigger: 'blur' }],
+    dbName: [{ required: true, message: '数据库名称不能为空', trigger: 'blur' }],
+    dbIp: [
+        { required: true, message: '数据库IP不能为空', trigger: 'blur' },
+        { pattern: ipPattern, message: '请输入有效的 IP 地址', trigger: 'blur' },
+    ],
+    dbPort: [
+        { required: true, message: '数据库端口不能为空', trigger: 'blur' },
+        { pattern: /^[0-9]+$/, message: '端口号必须为数字', trigger: 'blur' },
+        {
+            validator: (rule, value, callback) => {
+                if (value < 0 || value > 65535) {
+                    callback(new Error('端口号必须在 0-65535 之间'));
+                } else {
+                    callback();
+                }
+            },
+            trigger: 'blur',
+        },
+    ],
+    tbName: [{ required: true, message: '数据表名称不能为空', trigger: 'blur' }],
+    uname: [{ required: true, message: '数据库用户名不能为空', trigger: 'blur' }],
+    upwd: [{ required: true, message: '数据库用户密码不能为空', trigger: 'blur' }],
+});
+const dynamicRules = computed(() => {
+    return form.value.type === 0
+        ? {
+            dataSourceName: rules.value.dataSourceName,
+            path: rules.value.path,
+            fieldName: rules.value.fieldName,
+        }
+        : {
+            dataSourceName: rules.value.dataSourceName,
+            dbName: rules.value.dbName,
+            dbIp: rules.value.dbIp,
+            dbPort: rules.value.dbPort,
+            tbName: rules.value.tbName,
+            uname: rules.value.uname,
+            upwd: rules.value.upwd,
+            fieldName: rules.value.fieldName,
+        };
+});
+// 根据类型动态设置校验
+const getDynamicRules = () => {
+    return form.value.type === 0
+        ? {
+            dataSourceName: rules.value.dataSourceName,
+            path: rules.value.path,
+            fieldName: rules.value.fieldName,
+        }
+        : {
+            dataSourceName: rules.value.dataSourceName,
+            dbName: rules.value.dbName,
+            dbIp: rules.value.dbIp,
+            dbPort: rules.value.dbPort,
+            tbName: rules.value.tbName,
+            uname: rules.value.uname,
+            upwd: rules.value.upwd,
+            fieldName: rules.value.fieldName,
+        };
+};
+
+// 提交表单
 const onSubmit = async () => {
-    form.value.dataSourceUuid = SomeTools.guid()
-    form.value.id = props.taskInfo.id
+    form.value.dataSourceUuid = SomeTools.guid();
+    form.value.id = props.taskInfo.id;
+    console.log('当前动态校验规则:', dynamicRules.value);
     formRef.value.validate(async (valid) => {
         if (valid) {
-            await axios.post('/api/PIR/handleTaskInvitations', form.value
-                , {
-                    headers: {
-                        Authorization: localStorage.getItem('token'),
-                    }
-                }).then(res => {
-                    if (res.data.code === 1000) {
-                        ElMessage({
-                            type: 'success',
-                            message: '导入成功'
-                        })
-                        formRef.value.resetFields()
-                        emits('initMyJoin')
-                        handleClose()
-                    }
-                    else {
-                        const msg = res.data.message
-                        ElMessage({
-                            type: 'error',
-                            message: msg,
-                        })
-                    }
-                })
+            // 校验成功后的逻辑
+            await axios.post('/api/PIR/handleTaskInvitations', form.value, {
+                headers: {
+                    Authorization: localStorage.getItem('token'),
+                },
+            }).then((res) => {
+                if (res.data.code === 1000) {
+                    ElMessage({
+                        type: 'success',
+                        message: '导入成功',
+                    });
+                    formRef.value.resetFields();
+                    emits('initMyJoin');
+                    handleClose();
+                } else if (res.data.code === 1006) {
+                    ElMessage({ type: 'warning', message: 'Token过期，请重新登录' });
+                    handleClose();
+                    setTimeout(() => {
+                        router.push({ path: '/login' });
+                    }, 500);
+                } else {
+                    ElMessage({
+                        type: 'error',
+                        message: res.data.message,
+                    });
+                }
+            });
         }
-        else {
-            ElMessage({ type: 'error', message: '繁忙，请稍后再试' })
-        }
-    })
-
-}
+    });
+};
 </script>
 <style scoped>
 :deep(.my-label) {

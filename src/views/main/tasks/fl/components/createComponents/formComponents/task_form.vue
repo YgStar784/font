@@ -31,12 +31,12 @@
 
             </a-form-item>
             <a-form-item label="训练轮数 ">
-                <a-input class="text-ellipsis" v-model:value="CurrentTaskInfo.n_rounds" type="number"
+                <a-input-number class="text-ellipsis" v-model:value="CurrentTaskInfo.n_rounds" type="number"
                     placeholder="训练轮数">
                     <template #prefix>
                         <HeatMapOutlined />
                     </template>
-                </a-input>
+                </a-input-number>
             </a-form-item>
             <a-form-item label="需求描述 ">
                 <a-textarea type="text" v-model:value="CurrentTaskInfo.taskDescription"
@@ -59,7 +59,7 @@
     </div>
 </template>
 <script setup>
-import { reactive, ref } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import SomeTools from '@/utils/someTools'
 import { SendOutlined, ItalicOutlined, HeatMapOutlined } from '@ant-design/icons-vue';
 const formTitle = '任务信息'
@@ -90,6 +90,15 @@ const onSubmit = () => {
     // 使用 `emit` 触发事件，将 `updatedFormula` 传递给父组件
     emits('updateTaskInfo', CurrentTaskInfo.value);
 };
+
+// 当 props.taskInfo 改变时，更新 CurrentTaskInfo.value
+watch(
+    () => props.taskInfo, // 监听 props.taskInfo 的变化
+    (newTaskInfo) => {
+        CurrentTaskInfo.value = { ...newTaskInfo }; // 同步更新 CurrentTaskInfo 的值
+    },
+    { deep: true, immediate: true } // 深度监听并在初次挂载时执行
+);
 
 
 </script>

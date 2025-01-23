@@ -24,7 +24,8 @@ const load = ref(true)
 import { useUserStore } from '@/stores/user';
 import { ElSelect } from 'element-plus';
 import { onMounted, ref } from 'vue'
-
+import { useRouter } from 'vue-router'
+const router = useRouter()
 const userStore = useUserStore()
 const form = ref({
     username: '',
@@ -44,6 +45,7 @@ const getUserInfo = async () => {
     form.value.level = localStorage.getItem('level') === '0' ? '管理员' : '普通用户'
 
 }
+
 onMounted(() => getUserInfo())
 
 </script>

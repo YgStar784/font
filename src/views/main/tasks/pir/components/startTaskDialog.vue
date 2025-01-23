@@ -2,7 +2,8 @@
     <el-dialog class="dialog" @opened="onDialogOpened" :model-value="props.dialogVisibleStartTask" @close="handleClose">
         <el-card>
 
-            <el-form :model="form" ref="formRef" label-position="left" label-width="auto" style="max-width: 700px">
+            <el-form :model="form" ref="formRef" :rules="rules" label-position="left" label-width="auto"
+                style="max-width: 700px">
 
                 <el-form-item label="字段选择:" prop="keyField">
                     <el-select v-model="form.keyField" @change="handleChange" placeholder="请选择要查询的字段信息">
@@ -38,6 +39,8 @@ import { ref, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { log } from 'mathjs';
+import { useRouter } from 'vue-router'
+const router = useRouter()
 const props = defineProps({
     taskInfo: {
         type: Object,
@@ -58,13 +61,20 @@ const form = ref({
 })
 const checkboxGroup = ref([])
 
+
 const rules = ref({
-    dataPath: [{
-        required: true,
-        message: '路径不能为空',
-        trigger: 'blur',
-    }]
+    keyField: [
+        { required: true, message: '请选择字段信息', trigger: 'change' }
+    ],
+    keyWord: [
+        { required: true, message: '请输入查询字段的值', trigger: 'blur' }
+    ],
+    degree: [
+        { required: true, message: '请输入不可区分度', trigger: 'blur' },
+    ],
+
 })
+
 const emits = defineEmits(['update:modelValue', 'initMyJoin'])
 
 const handleChange = (value) => {
@@ -103,6 +113,14 @@ const onSubmit = async () => {
                         formRef.value.resetFields()
                         emits('initMyJoin')
                         handleClose()
+                    } else if (res.data.code === 1006) {
+                        ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                        handleClose()
+
+                        setTimeout(() => {
+                            router.push({ path: '/login' }); // 确保路径和名称正确
+                        }, 500); // 避免动画加载导致页面阻塞
+                        return
                     }
                     else {
                         const msg = res.data.message

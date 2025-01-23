@@ -69,6 +69,13 @@ const getPlayerInfo = async () => {
                 taskPlayerList.value = res.data.data.taskList
                 console.log(taskPlayerList.value)
                 playertotal.value = res.data.data.total
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                handleClose()
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.data.message

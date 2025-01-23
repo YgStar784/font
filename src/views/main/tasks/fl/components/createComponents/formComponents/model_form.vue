@@ -5,14 +5,6 @@
     <div class="form-container">
         <a-form :model="localModelInfo" style="margin-top: 10px;">
 
-
-
-            <a-form-item label="类型 ">
-                <a-input class="text-ellipsis" v-model:value="localModelInfo.params.model_type" type="text"
-                    placeholder="type" disabled>
-
-                </a-input>
-            </a-form-item>
             <a-form-item label="任务类型 ">
                 <a-input class=" text-ellipsis borderInput" v-model:value="localModelInfo.params.task_type"
                     placeholder="cpu_capacity" readonly>
@@ -39,7 +31,7 @@
             </a-form-item>
             <a-form-item label="损失函数 ">
                 <VueSelect v-model="localModelInfo.params.loss" :options="[
-                    { label: 'cross_entropy', value: 'cross_entropy' },
+                    { label: 'cross_entropy', value: 'ce' },
                     { label: 'mse', value: 'mse' },
                 ]" placeholder="loss function" />
             </a-form-item>
@@ -57,7 +49,7 @@
                     { label: 'cuda', value: 'cuda' },
                 ]" placeholder="device" />
             </a-form-item>
-            <a-form-item v-if="localModelInfo.params.model_type != 'fed_model'" label="n_components">
+            <a-form-item label="n_components">
                 <a-input-number v-model:value="localModelInfo.params.n_components" :min="1" :step="5" />
 
             </a-form-item>
@@ -84,7 +76,7 @@ import SomeTools from '@/utils/someTools'
 import VueSelect from "vue3-select-component";
 
 import { SendOutlined, CheckCircleOutlined, CloseCircleOutlined, UserOutlined, ItalicOutlined, HeatMapOutlined } from '@ant-design/icons-vue';
-const formTitle = '整体模型配置'
+const formTitle = '整体配置'
 const taskInfo = ref({
     name: '',
     task_id: '',

@@ -89,6 +89,7 @@
 import { ref } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
 const props = defineProps({
     taskInfo: {
         type: Object,
@@ -96,6 +97,7 @@ const props = defineProps({
         required: true
     }
 })
+const router = useRouter()
 const formRef = ref()
 const form = ref({
     id: props.taskInfo.id,
@@ -145,6 +147,14 @@ const onSubmit = async () => {
                         formRef.value.resetFields()
                         emits('initMyJoin')
                         handleClose()
+                    } else if (res.data.code === 1006) {
+                        ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                        handleClose()
+
+                        setTimeout(() => {
+                            router.push({ path: '/login' }); // 确保路径和名称正确
+                        }, 500); // 避免动画加载导致页面阻塞
+                        return
                     }
                     else {
                         const msg = res.data.message

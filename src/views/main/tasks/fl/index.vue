@@ -1,5 +1,5 @@
 <template>
-    <div class="index" v-if="showCreate === 'false'">
+    <div class="index" v-if="showCreate === 'false' && showMore === 'false'">
 
         <div class="flex justify-between items-center flex-wrap">
             <el-card>
@@ -73,9 +73,9 @@
                                         </template>
                                     </template>
                                     <template v-slot="{ row }" align="center" v-if="item.label === '任务类型'">
-                                        <template v-if="row.tasktype">
-                                            <span>匿踪查询</span>
-                                        </template>
+
+                                        <span>联邦建模</span>
+
 
                                     </template>
                                 </el-table-column>
@@ -83,7 +83,7 @@
                                     <template #default="{ row }">
 
                                         <div class="op-but">
-                                            <el-tooltip effect="light" content="参与者信息" placement="top">
+                                            <!--                                             <el-tooltip effect="light" content="参与者信息" placement="top">
                                                 <el-button type="success" size="small" icon="Search" label="查看"
                                                     @click="handlePlayerInfo(row)" />
                                             </el-tooltip>
@@ -93,12 +93,21 @@
                                                 <el-button type="warning" size="small" icon="CaretRight" label="进行"
                                                     @click="handleBegin(row)" />
                                             </el-tooltip>
-                                            <el-tooltip effect="light" content="训练结果" placement="top">
+                                            <el-tooltip v-if="row.taskState === 0" effect="light" content="训练结果"
+                                                placement="top">
                                                 <el-button size="small" icon="PictureRounded" label="训练结果"
                                                     @click="showTrainResult(row)" />
+                                            </el-tooltip> -->
+                                            <el-tooltip effect="light" content="更多" placement="top">
+                                                <el-button type="success" size="small" icon="Search" label="查看"
+                                                    @click="showMoreInfo(row)" />
                                             </el-tooltip>
-
-                                            <el-tooltip v-if="row.taskState === 0" effect="light" content="模型下载"
+                                            <el-tooltip v-if="row.taskState === 4" effect="light" content="开始进行"
+                                                placement="top">
+                                                <el-button type="warning" size="small" icon="CaretRight" label="进行"
+                                                    @click="handleBegin(row)" />
+                                            </el-tooltip>
+                                            <!--       <el-tooltip v-if="row.taskState === 0" effect="light" content="模型下载"
                                                 placement="top">
                                                 <el-button type="warning" size="small" icon="Coin" label="模型下载"
                                                     @click="handleDownLoad(row, 1)" />
@@ -107,7 +116,7 @@
                                                 placement="top">
                                                 <el-button type="danger" size="small" icon="DocumentCopy" label="数据下载"
                                                     @click="handleDownLoad(row, 2)" />
-                                            </el-tooltip>
+                                            </el-tooltip> -->
 
 
                                         </div>
@@ -186,6 +195,11 @@
 
                                 </template>
                             </el-table-column>
+                            <el-table-column label="任务类型" width="auto" align="center">
+                                <template #default="{ row }">
+                                    <span>联邦建模</span>
+                                </template>
+                            </el-table-column>
                             <el-table-column fixed="right" label="操作" width="160px" align="center">
                                 <template #default="{ row }">
                                     <el-tooltip class="item" effect="light" content="处理" placement="top">
@@ -224,7 +238,8 @@
         <HandleTaskInvitationsDialog v-model="dialogVisibleAccept" :taskInfo="taskInfo" @initMyJoin="getMyTaskJoin">
         </HandleTaskInvitationsDialog>
         <PlayerInfoDialog v-model="dialogVisiblePlayer" :taskName="taskName" :taskUuid="taskUuid"
-            :createTime="createTime" :taskDescription="taskDescription"></PlayerInfoDialog>
+            :createTime="createTime" :taskInfoError="taskInfoError" :taskDescription="taskDescription">
+        </PlayerInfoDialog>
         <TrainResultDialog v-model="resultDialogValue" :taskUuid="taskUuid"></TrainResultDialog>
     </div>
     <div class="create" v-if="showCreate === 'true'">
@@ -236,15 +251,22 @@
         </transition>
 
     </div>
+    <div class="more-info" v-if="showMore === 'true'">
+        <transition name="fade" mode="out-in">
+
+            <RouterView />
+
+        </transition>
+    </div>
 </template>
 
 <script setup>
 import { taskOptions } from '../taskOptions'
 import { taskOptionsJoin } from '../taskOptionsJoinFL'
-import { isCreate, showCreate } from './isCreate.js'
+import { isCreate, showCreate, showMore } from './isCreate.js'
 import { NButton } from 'naive-ui'
 import { useRouter, useRoute } from 'vue-router'
-import { onMounted, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import HandleTaskInvitationsDialog from './components/handleTaskInvitationsDialog.vue'
 import PlayerInfoDialog from './components/playerInfoDialog.vue'
@@ -276,6 +298,7 @@ const queryFormJoin = ref({
     page: 1,
     pageSize: 10
 })
+const taskInfoError = ref('')
 const pending = ref(0)
 const createTask = () => {
     // 设置 isCreate 为 true（如果需要）
@@ -286,7 +309,19 @@ const createTask = () => {
     router.push({ name: 'flCreate' });
 
 }
+const showMoreInfo = (row) => {
+    localStorage.setItem('showMore', 'true')
+    showMore.value = 'true'
+    localStorage.setItem('taskUuid', row.taskUuid)
+    localStorage.setItem('taskName', row.taskName)
+    localStorage.setItem('createTime', row.createTime)
+    localStorage.setItem('taskDescription', row.taskDescription)
+    localStorage.setItem('taskInfoError', row.errorMessage)
+    localStorage.setItem('taskState', row.taskState)
+    router.push({ name: 'flTaskDetail' });
 
+
+}
 const getMyTask = async () => {
 
     axios.post('/api/FL/getMyTrainTask', queryForm.value
@@ -300,6 +335,12 @@ const getMyTask = async () => {
                 tableData.value = res.data.data.taskList
                 console.log(tableData.value)
                 mytotal.value = res.data.data.total
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.message
@@ -396,6 +437,12 @@ const handleBegin = async (row) => {
                     message: '开启任务'
                 })
                 getMyTask()
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.data.message
@@ -425,7 +472,7 @@ const getIndex = (index) => {
     return (queryForm.page - 1) * queryForm.pageSize + index + 1
 }
 const beginTask = async (row) => {
-    await axios.post('/api/PIR/startTask', { taskUuid: row.taskUuid }
+    await axios.post('/api/PIR/startTrainTask', { taskUuid: row.taskUuid }
         , {
             headers: {
                 Authorization: localStorage.getItem('token'),
@@ -476,9 +523,10 @@ const handlePlayerInfo = async (row) => {
 
     taskName.value = row.taskName
     taskUuid.value = row.taskUuid
+    console.log('taskUuid.value', taskUuid.value);
     createTime.value = row.createTime
     taskDescription.value = row.taskDescription
-
+    taskInfoError.value = row.errorMessage
     dialogVisiblePlayer.value = true
 
 
@@ -505,83 +553,88 @@ watch(() => tableDataJoin.value, pendingCount)
 watch(() => tableData.value, beginCount)
 
 const handleDownLoad = async (row, resultType) => {
+    let fileType = ''; // 文件类型
+    let fileExtension = ''; // 文件扩展名
+    let filePrefix = ''; // 文件前缀
+
     if (resultType === 1) {
+        fileType = 'application/octet-stream'; // 通用二进制文件类型
+        fileExtension = '.pth';
+        filePrefix = 'model-';
         ElMessageBox.confirm(
             '确定下载' + row.taskName + '-' + row.taskUuid + '的模型文件吗?',
             '下载',
             {
                 confirmButtonText: '确认',
                 cancelButtonText: '取消',
-
             }
-        )
-            .then(async () => {
-                //const res = await downloadResultByUuidAPI({ taskUuid: row.taskUuid })
-                axios.post('/api/FL/downloadTrainResultByUuid', { resultType: 1, taskUuid: row.taskUuid }
-                    , {
-                        headers: {
-                            Authorization: localStorage.getItem('token'),
-                        },
-                        responseType: 'blob',
-                    }).then(res => {
-                        console.log(res)
-                        const data = res.data
-                        if (data.hasOwnProperty('code')) {
-                            ElMessage({
-                                type: 'error',
-                                message: '下载失败'
-                            })
-                        }
-                        else {
-                            const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-                            const objectUrl = URL.createObjectURL(blob) // 创建URL
-                            link.href = objectUrl
-                            link.download = 'psi-' + row.taskUuid// 自定义文件名
-                            link.click() // 下载文件
-                            URL.revokeObjectURL(objectUrl); // 释放内存
-                        }
-                    })
-            })
+        ).then(async () => {
+            axios.post('/api/FL/downloadTrainResultByUuid', { resultType: 1, taskUuid: row.taskUuid }, {
+                headers: {
+                    Authorization: localStorage.getItem('token'),
+                },
+                responseType: 'blob',
+            }).then(res => {
+                console.log(res);
+                const data = res.data;
+                if (data.hasOwnProperty('code')) {
+                    ElMessage({
+                        type: 'error',
+                        message: '下载失败',
+                    });
+
+                }
+                else {
+                    const blob = new Blob([data], { type: fileType });
+                    const objectUrl = URL.createObjectURL(blob); // 创建 URL
+                    const link = document.createElement('a');
+                    link.href = objectUrl;
+                    link.download = filePrefix + row.taskUuid + fileExtension; // 自定义文件名
+                    link.click(); // 下载文件
+                    URL.revokeObjectURL(objectUrl); // 释放内存
+                }
+            });
+        });
     }
+
     if (resultType === 2) {
+        fileType = 'application/octet-stream'; // 通用二进制文件类型
+        fileExtension = '.h5';
+        filePrefix = 'data-';
         ElMessageBox.confirm(
             '确定下载' + row.taskName + '-' + row.taskUuid + '的数据文件吗?',
             '下载',
             {
                 confirmButtonText: '确认',
                 cancelButtonText: '取消',
-
             }
-        )
-            .then(async () => {
-                //const res = await downloadResultByUuidAPI({ taskUuid: row.taskUuid })
-                axios.post('/api/FL/downloadTrainResultByUuid', { resultType: 2, taskUuid: row.taskUuid }
-                    , {
-                        headers: {
-                            Authorization: localStorage.getItem('token'),
-                        },
-                        responseType: 'blob',
-                    }).then(res => {
-                        console.log(res)
-                        const data = res.data
-                        if (data.hasOwnProperty('code')) {
-                            ElMessage({
-                                type: 'error',
-                                message: '下载失败'
-                            })
-                        }
-                        else {
-                            const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-                            const objectUrl = URL.createObjectURL(blob) // 创建URL
-                            link.href = objectUrl
-                            link.download = 'psi-' + row.taskUuid// 自定义文件名
-                            link.click() // 下载文件
-                            URL.revokeObjectURL(objectUrl); // 释放内存
-                        }
-                    })
-            })
+        ).then(async () => {
+            axios.post('/api/FL/downloadTrainResultByUuid', { resultType: 2, taskUuid: row.taskUuid }, {
+                headers: {
+                    Authorization: localStorage.getItem('token'),
+                },
+                responseType: 'blob',
+            }).then(res => {
+                console.log(res);
+                const data = res.data;
+                if (data.hasOwnProperty('code')) {
+                    ElMessage({
+                        type: 'error',
+                        message: '下载失败',
+                    });
+                } else {
+                    const blob = new Blob([data], { type: fileType });
+                    const objectUrl = URL.createObjectURL(blob); // 创建 URL
+                    const link = document.createElement('a');
+                    link.href = objectUrl;
+                    link.download = filePrefix + row.taskUuid + fileExtension; // 自定义文件名
+                    link.click(); // 下载文件
+                    URL.revokeObjectURL(objectUrl); // 释放内存
+                }
+            });
+        });
     }
-}
+};
 const showTrainResult = async (row) => {
     taskUuid.value = row.taskUuid
     resultDialogValue.value = true
@@ -679,11 +732,20 @@ onMounted(() => {
     getMyTaskJoin()
 
 })
+onBeforeUnmount(() => {
+    localStorage.setItem('showMore', 'false')
+
+})
 onMounted(() => {
     if (!localStorage.getItem('isCreate')) {
         localStorage.setItem('isCreate', 'false')
     }
+    if (!localStorage.getItem('showMore')) {
+        localStorage.setItem('showMore', 'false')
+    }
+
     showCreate.value = localStorage.getItem('isCreate')
+    showMore.value = localStorage.getItem('showMore')
 })
 </script>
 

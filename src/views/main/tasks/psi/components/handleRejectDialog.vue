@@ -18,6 +18,8 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+const router = useRouter()
 const emits = defineEmits(['update:modelValue', 'initMyJoin'])
 const handleClose = () => {
     emits('update:modelValue', false)
@@ -60,6 +62,14 @@ const onSubmit = async () => {
                 })
                 emits('initMyJoin')
                 handleClose()
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                handleClose()
+
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.data.message

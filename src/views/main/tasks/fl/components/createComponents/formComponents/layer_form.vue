@@ -7,13 +7,13 @@
         <a-form :model="layerInfo" style="margin-top: 10px;" :label-col="{ span: 8 }" :wrapper-col="{ span: 14 }"
             label-align="left">
 
-            <a-form-item v-if="layerInfo.name" label="名称">
-                <a-input v-model:value="layerInfo.name" type="text" disabled />
+            <a-form-item v-if="layerInfo.params.type" label="名称">
+                <a-input v-model:value="layerInfo.params.type" type="text" disabled />
             </a-form-item>
 
 
             <!-- conv1d -->
-            <div v-if="layerInfo.name === 'Conv1D'" class="conv1d">
+            <div v-if="layerInfo.params.type === 'conv1d'" class="conv1d">
                 <a-form-item label="in_channels">
                     <a-input-number v-model:value="layerInfo.params.in_channels" :min="1" :step="1" />
                 </a-form-item>
@@ -31,8 +31,7 @@
                 </a-form-item>
             </div>
 
-            <!-- conv2d -->
-            <div v-else-if="layerInfo.name === 'conv2d'" class="conv2d">
+            <div v-else-if="layerInfo.params.type === 'conv2d'" class="conv2d">
                 <a-form-item label="in_channels">
                     <a-input-number v-model:value="layerInfo.params.in_channels" :min="1" :step="1" />
                 </a-form-item>
@@ -49,9 +48,11 @@
                     <a-input-number v-model:value="layerInfo.params.padding" :min="0" :step="1" />
                 </a-form-item>
             </div>
+            <!-- conv2d -->
+
 
             <!-- linear -->
-            <div v-else-if="layerInfo.name === 'linear'" class="linear">
+            <div v-else-if="layerInfo.params.type === 'linear'" class="linear">
                 <a-form-item label="in_features">
                     <a-input-number v-model:value="layerInfo.params.in_features" :min="1" :step="1" />
                 </a-form-item>
@@ -61,7 +62,7 @@
             </div>
 
             <!-- transformer -->
-            <div v-else-if="layerInfo.name === 'transformer'" class="transformer">
+            <div v-else-if="layerInfo.params.type === 'transformer'" class="transformer">
                 <a-form-item label="d_model">
                     <a-input-number v-model:value="layerInfo.params.d_model" :min="1" :step="1" />
                 </a-form-item>
@@ -89,7 +90,7 @@
             </div>
 
             <!-- lstm -->
-            <div v-else-if="layerInfo.name === 'lstm'" class="lstm">
+            <div v-else-if="layerInfo.params.type === 'lstm'" class="lstm">
                 <a-form-item label="input_size">
                     <a-input-number v-model:value="layerInfo.params.input_size" :min="1" :step="1" />
                 </a-form-item>
@@ -111,7 +112,7 @@
             </div>
 
             <!-- maxpool -->
-            <div v-else-if="layerInfo.name === 'maxpool'" class="maxpool">
+            <div v-else-if="layerInfo.params.type === 'maxpool'" class="maxpool">
                 <a-form-item label="kernel_size">
                     <a-input-number v-model:value="layerInfo.params.kernel_size" :min="1" :step="1" />
                 </a-form-item>
@@ -124,7 +125,7 @@
             </div>
 
             <!-- batchnorm1d -->
-            <div v-else-if="layerInfo.name === 'batchnorm1d'" class="batchnorm1d">
+            <div v-else-if="layerInfo.params.type === 'batchnorm1d'" class="batchnorm1d">
                 <a-form-item label="num_features">
                     <a-input-number v-model:value="layerInfo.params.num_features" :min="1" :step="1" />
                 </a-form-item>
@@ -136,7 +137,7 @@
                 </a-form-item>
             </div>
             <!-- batchnorm1d -->
-            <div v-else-if="layerInfo.name === 'Reshape'" class="reshape">
+            <div v-else-if="layerInfo.params.type === 'reshape'" class="reshape">
                 <!-- Select 下拉框 -->
                 <!-- 选择 shape 的维度 -->
                 <a-form-item label="shape"> <a-input-group compact>
@@ -149,25 +150,25 @@
                         </a-select>
 
                         <!-- 输入 shape 的值 -->
-                        <a-input v-model:value="layerInfo.params.shape[selectedDimension]" style="width: 30%"
+                        <a-input-number v-model:value="layerInfo.params.shape[selectedDimension]" style="width: 30%"
                             placeholder="Enter value" />
                     </a-input-group></a-form-item>
             </div>
             <!-- dropout -->
-            <div v-else-if="layerInfo.name === 'dropout'" class="dropout">
+            <div v-else-if="layerInfo.params.type === 'dropout'" class="dropout">
                 <a-form-item label="p">
                     <a-input-number v-model:value="layerInfo.params.p" :min="0" :max="1" :step="0.01" />
                 </a-form-item>
             </div>
             <!-- softmax -->
-            <div v-else-if="layerInfo.name === 'softmax'" class="softmax">
+            <div v-else-if="layerInfo.params.type === 'softmax'" class="softmax">
                 <a-form-item label="dim">
                     <a-input-number v-model:value="layerInfo.params.dim" :min="0" :max="1" :step="1" />
                 </a-form-item>
             </div>
 
             <!-- lazy_conv1d -->
-            <div v-else-if="layerInfo.name === 'lazy_conv1d'" class="lazy-conv1d">
+            <div v-else-if="layerInfo.params.type === 'lazy_conv1d'" class="lazy_conv1d">
                 <a-form-item label="out_channels">
                     <a-input-number v-model:value="layerInfo.params.out_channels" :min="1" :step="1" />
                 </a-form-item>
@@ -185,7 +186,7 @@
             </div>
 
             <!-- lazy_conv2d -->
-            <div v-else-if="layerInfo.name === 'lazy_conv2d'" class="lazy-conv2d">
+            <div v-else-if="layerInfo.params.type === 'lazy_conv2d'" class="lazy-conv2d">
                 <a-form-item label="out_channels">
                     <a-input-number v-model:value="layerInfo.params.out_channels" :min="1" :step="1" />
                 </a-form-item>
@@ -203,7 +204,7 @@
             </div>
 
             <!-- lazy_linear -->
-            <div v-else-if="layerInfo.name === 'lazy_linear'" class="lazy-linear">
+            <div v-else-if="layerInfo.params.type === 'lazy_linear'" class="lazy-linear">
                 <a-form-item label="out_features">
                     <a-input-number v-model:value="layerInfo.params.out_features" :min="1" :step="1" />
                 </a-form-item>

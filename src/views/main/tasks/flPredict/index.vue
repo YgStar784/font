@@ -72,9 +72,9 @@
                                     </template>
                                 </template>
                                 <template v-slot="{ row }" align="center" v-if="item.label === '任务类型'">
-                                    <template v-if="row.tasktype">
-                                        <span>联邦预测</span>
-                                    </template>
+
+                                    <span>联邦预测</span>
+
                                 </template>
                             </el-table-column>
                             <el-table-column fixed="right" label="操作" width="160px" align="center">
@@ -121,7 +121,7 @@ import { taskOptions } from '../taskOptions'
 import { NButton } from 'naive-ui'
 import { useRouter, useRoute } from 'vue-router'
 import { onMounted, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import CreateTaskDialog from './components/createTask.vue'
 import ShowPredictDialog from './components/showPredictDialog.vue'
 import axios from 'axios'
@@ -168,6 +168,12 @@ const getMyTask = async () => {
                 tableData.value = res.data.data.taskList
                 console.log(tableData.value)
                 mytotal.value = res.data.data.total
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.message
@@ -300,8 +306,11 @@ const handleDownLoad = async (row) => {
         }
     )
         .then(async () => {
+            let fileType = 'application/octet-stream'; // 通用二进制文件类型
+            let fileExtension = '.h5';
+            let filePrefix = 'flPredict-';
             //const res = await downloadResultByUuidAPI({ taskUuid: row.taskUuid })
-            axios.post('/api/MPC/downloadPredictionResultByUuid', { taskUuid: row.taskUuid }
+            await axios.post('/api/FL/downloadPredictionResultByUuid', { taskUuid: row.taskUuid }
                 , {
                     headers: {
                         Authorization: localStorage.getItem('token'),
@@ -317,10 +326,13 @@ const handleDownLoad = async (row) => {
                         })
                     }
                     else {
-                        const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+                        const blob = new Blob([data], { type: fileType })
                         const objectUrl = URL.createObjectURL(blob) // 创建URL
-                        link.href = objectUrl
-                        link.download = 'mpc-' + row.taskUuid// 自定义文件名
+
+                        const link = document.createElement('a');
+                        link.href = objectUrl;
+
+                        link.download = filePrefix + row.taskUuid + fileExtension// 自定义文件名
                         link.click() // 下载文件
                         URL.revokeObjectURL(objectUrl); // 释放内存
                     }
@@ -464,7 +476,7 @@ watch(() => tableDataJoin.value, pendingCount)
 watch(() => tableData.value, beginCount)
 
 const showPredictResult = async (row) => {
-    taskUuid.value = row.taskuuid
+    taskUuid.value = row.taskUuid
     resultDialogValue.value = true
 }
 
@@ -504,6 +516,12 @@ const getMyTaskJoin = async () => {
                 tableDataJoin.value = res.data.data.taskList
                 console.log(tableDataJoin.value)
                 jointotal.value = res.data.data.total
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.data.message
@@ -545,6 +563,7 @@ server.listen(PORT, HOST, (error) => {
 
 onMounted(() => {
     getMyTask()
+
 
 })
 onMounted(() => {

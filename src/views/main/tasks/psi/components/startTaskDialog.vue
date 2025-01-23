@@ -137,7 +137,10 @@ import { NCard, NButton } from 'naive-ui'
 import { VueDraggable } from 'vue-draggable-plus'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+
 import { row } from 'mathjs'
+const router = useRouter()
 const loadingSub = ref(false);
 const loadingSubIcon = ref(false);
 const jsonData = ref(null)
@@ -257,6 +260,14 @@ const handleBegin = async () => {
 
 
             })
+        } else if (res.data.code === 1006) {
+            ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+            handleClose()
+
+            setTimeout(() => {
+                router.push({ path: '/login' }); // 确保路径和名称正确
+            }, 500); // 避免动画加载导致页面阻塞
+            return
         } else {
             ElMessage({ type: 'error', message: res.data.message })
         }
@@ -338,7 +349,16 @@ const onSubmit = async () => {
             submitDialogVisiable.value = false
             handleClose()
 
-        } else {
+        } else if (res.data.code === 1006) {
+            ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+            handleClose()
+
+            setTimeout(() => {
+                router.push({ path: '/login' }); // 确保路径和名称正确
+            }, 500); // 避免动画加载导致页面阻塞
+            return
+        }
+        else {
             ElMessage({ type: 'error', message: res.data.message })
         }
     })

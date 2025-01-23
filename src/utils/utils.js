@@ -136,7 +136,7 @@ export function extractUsernamesWithFunc(formula) {
     return [];
   }
 
-  return matches.filter(name => !['Min', 'Max'].includes(name));
+  return matches.filter(name => !['Min', 'Max', 'Min_Value', 'Max_Value'].includes(name));
 }
 //带有min，max的公式的合法性的判断
 export function validateFormula(formula) {
@@ -266,4 +266,58 @@ export function extractUsernamesAndBracket(formula) {
     username: item.username,
     bracket: item.bracket
   }));
+}
+export function extractUsernamesAndBracketIncludeMaxOrMin(formula) {
+  // 定义操作符字符，包括全角和半角
+  const operatorChars = ['+', '＋', '-', '－', '*', '＊', '/', '／', ' ', '　'];
+  const functionNames = ['max', 'min', 'min_value', 'max_value']; // 函数名称列表
+  let result = []; // 结果数组
+  let stack = []; // 栈用于记录括号内容
+  let currentString = ''; // 当前用户字符串
+  let inFunction = false; // 标记是否在函数模式中
+
+  for (let i = 0; i < formula.length; i++) {
+    const char = formula[i];
+
+    // 遇到左括号，进入函数模式
+    if (char === '(' || char === '（') {
+      if (currentString.match(/^[a-zA-Z]+$/) && functionNames.includes(currentString)) {
+        inFunction = true; // 标记进入函数模式
+      }
+      stack.push(char); // 入栈
+      currentString += char; // 追加括号
+      continue;
+    }
+
+    // 遇到右括号，出栈
+    if (char === ')' || char === '）') {
+      stack.pop(); // 出栈
+      currentString += char; // 追加括号
+      if (inFunction && stack.length === 0) {
+        result.push({ username: currentString, bracket: '' }); // 添加完整函数为用户名
+        currentString = ''; // 重置
+        inFunction = false; // 退出函数模式
+      }
+      continue;
+    }
+
+    // 如果是操作符
+    if (operatorChars.includes(char)) {
+      if (currentString && !inFunction) {
+        result.push({ username: currentString, bracket: '' }); // 添加普通用户名
+        currentString = ''; // 重置
+      }
+      continue;
+    }
+
+    // 普通字符追加
+    currentString += char;
+  }
+
+  // 处理最后一个累积的用户名
+  if (currentString) {
+    result.push({ username: currentString, bracket: '' });
+  }
+
+  return result;
 }

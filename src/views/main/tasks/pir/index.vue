@@ -1,6 +1,6 @@
 <template>
 
-    <div class="flex justify-between items-center flex-wrap">
+    <div v-if="showMore === 'false'" class="flex justify-between items-center flex-wrap">
         <el-card>
             <template #header>
                 <div class="card-header">
@@ -50,40 +50,42 @@
 
                             <el-table-column :width="item.width" :prop="item.prop" :label="item.label"
                                 v-for="(item, index) in taskOptions" :key="index">
+
                                 <template v-slot="{ row }" align="center" v-if="item.label === '任务状态'">
                                     <template v-if="row.taskState === 0">
-                                        <el-check-tag checked="true" type="success" effect="dark">成功</el-check-tag>
+                                        <a-badge status="success" text="成功" />
 
                                     </template>
                                     <template v-else-if="row.taskState === 1">
-                                        <el-check-tag checked="true" type="error" effect="dark">失败</el-check-tag>
+                                        <a-badge status="error" text="失败" />
 
                                     </template>
-                                    <template v-else-if="row.taskState === 2" effect="dark">
-                                        <el-check-tag checked="true" type="primary">进行中</el-check-tag>
-                                    </template>
-                                    <template v-else-if="row.taskState === 3" effect="dark">
-                                        <el-check-tag checked="true" type="info">待确认</el-check-tag>
+                                    <template v-else-if="row.taskState === 2">
+                                        <a-badge status="processing" text="进行中" /> </template>
+                                    <template v-else-if="row.taskState === 3">
+                                        <a-badge state="processing" color="purple" text="待确认" />
                                     </template>
                                     <template v-else-if="row.taskState === 4" effect="dark">
-                                        <el-check-tag checked="true" type="warning">可进行</el-check-tag>
+                                        <a-badge status="processing" color="yellow" text="可进行" />
                                     </template>
                                     <template v-else-if="row.taskState === 5" effect="dark">
-                                        <el-check-tag checked="true" type="danger">拒绝</el-check-tag>
+                                        <a-badge color="magenta" text="拒绝"></a-badge>
                                     </template>
                                 </template>
                                 <template v-slot="{ row }" align="center" v-if="item.label === '任务类型'">
-                                    <template v-if="row.tasktype">
-                                        <span>匿踪查询</span>
-                                    </template>
+                                    <span>匿踪查询</span>
 
                                 </template>
                             </el-table-column>
                             <el-table-column fixed="right" label="操作" width="160px" align="center">
                                 <template #default="{ row }">
-                                    <el-tooltip class="item" effect="light" content="参与者信息" placement="top">
+                                    <!--                                     <el-tooltip class="item" effect="light" content="参与者信息" placement="top">
                                         <el-button type="success" size="small" icon="Search" label="查看"
                                             @click="handlePlayerInfo(row)" />
+                                    </el-tooltip> -->
+                                    <el-tooltip class="item" effect="light" content="查看" placement="top">
+                                        <el-button type="success" size="small" icon="Search" label="查看"
+                                            @click="showMoreInfo(row)" />
                                     </el-tooltip>
                                     <el-tooltip v-if="row.taskState === 0" class="item" effect="light"
                                         :content="row.fileName" placement="right">
@@ -188,7 +190,8 @@
         </el-card>
         <pirAddDialog v-model="dialogVisible" @initTaskList="getMyTask" v-if="dialogVisible" />
         <PlayerDialog v-model="dialogVisiblePlayer" :dialogTableValue="taskPlayerList" v-if="dialogVisiblePlayer"
-            :taskName="taskName" :taskUuid="taskUuid" :createTime="createTime" :taskDescription="taskDescription" />
+            :taskName="taskName" :taskUuid="taskUuid" :taskInfoError=taskInfoError :createTime="createTime"
+            :taskDescription="taskDescription" />
         <HandleTaskInvitationsDialoag v-model="dialogVisibleAccept" :taskInfo="taskInfo" @initMyJoin="getMyTaskJoin" />
         <HandleRejectDialog v-model="centerDialogVisible" :taskInfo="taskInfo" @initMyJoin="getMyTaskJoin" />
         <UploadDataSourceInfoDialog v-model="dialogVisibleDataSource" :taskInfo="taskInfo"
@@ -196,7 +199,13 @@
         <startTaskDialog v-model="dialogVisibleStartTask" :taskInfo="taskInfo" @initMyJoin="getMyTask" />
 
     </div>
+    <div class="more-info" v-if="showMore === 'true'">
+        <transition name="fade" mode="out-in">
 
+            <RouterView />
+
+        </transition>
+    </div>
 </template>
 <script setup>
 
@@ -218,7 +227,7 @@ import UploadDataSourceInfoDialog from './components/uploadDataSourceInfoDialog.
 import { changeStateAPI } from '@/apis/users'
 import { isNULL } from '@/utils/filters'
 import { ElMessageBox } from 'element-plus'
-
+import { showMore } from '../fl/isCreate'
 const link = document.createElement('a')
 const pending = ref(0)
 const level = localStorage.getItem('level')
@@ -230,12 +239,13 @@ const taskInfo = ref({})
 const queryForm = ref({
     queryName: '',
     page: 1,
-    pageSize: 2
+    pageSize: 10
 })
+const taskInfoError = ref('')
 const queryFormJoin = ref({
     queryName: '',
     page: 1,
-    pageSize: 2
+    pageSize: 10
 })
 const queryFormPlayer = ref({
     uuid: '',
@@ -276,7 +286,19 @@ const handleDialogValue = (row) => {
     dialogVisible.value = true
 
 }
+const showMoreInfo = (row) => {
+    localStorage.setItem('showMore', 'true')
+    showMore.value = 'true'
+    localStorage.setItem('taskUuid', row.taskUuid)
+    localStorage.setItem('taskName', row.taskName)
+    localStorage.setItem('createTime', row.createTime)
+    localStorage.setItem('taskDescription', row.taskDescription)
+    localStorage.setItem('taskInfoError', row.errorMessage)
+    localStorage.setItem('taskState', row.taskState)
+    router.push({ name: 'pirTaskDetail' });
 
+
+}
 const getMyTask = async () => {
 
     axios.post('/api/PIR/getMyTask', queryForm.value
@@ -290,6 +312,13 @@ const getMyTask = async () => {
                 tableData.value = res.data.data.taskList
                 console.log(tableData.value)
                 mytotal.value = res.data.data.total
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.message
@@ -361,6 +390,13 @@ const handleBegin = async (row) => {
                 taskPlayerList.value = res.data.data.taskList
                 console.log(taskPlayerList.value)
                 playertotal.value = res.data.data.total
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.data.message
@@ -375,7 +411,10 @@ const handleBegin = async (row) => {
     dialogVisibleStartTask.value = true
 
 }
+onBeforeUnmount(() => {
+    localStorage.setItem('showMore', 'false')
 
+})
 const showUploadDataSourceInfo = (row) => {
     dialogVisibleDataSource.value = true
 
@@ -406,6 +445,13 @@ const beginTask = async (row) => {
                     message: '开启任务'
                 })
                 getMyTask()
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.data.message
@@ -464,6 +510,21 @@ const handlePlayerInfo = async (row) => {
                 taskPlayerList.value = res.data.data.taskList
                 console.log(taskPlayerList.value)
                 playertotal.value = res.data.data.total
+                dialogVisiblePlayer.value = true
+                queryFormPlayer.value.uuid = row.taskUuid
+                taskName.value = row.taskName
+                taskUuid.value = row.taskUuid
+                createTime.value = row.createTime
+                taskDescription.value = row.taskDescription
+
+                taskInfoError.value = row.errorMessage
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.data.message
@@ -473,13 +534,6 @@ const handlePlayerInfo = async (row) => {
                 })
             }
         })
-    dialogVisiblePlayer.value = true
-    queryFormPlayer.value.uuid = row.taskUuid
-    taskName.value = row.taskName
-    taskUuid.value = row.taskUuid
-    createTime.value = row.createTime
-    taskDescription.value = row.taskDescription
-
 
 }
 const pendingCount = () => {
@@ -601,6 +655,13 @@ const getMyTaskJoin = async () => {
                 tableDataJoin.value = res.data.data.taskList
                 console.log(tableDataJoin.value)
                 jointotal.value = res.data.data.total
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.data.message
@@ -638,16 +699,15 @@ server.listen(PORT, HOST, (error) => {
 });
 
  */
-let timer = setInterval(() => {
-    getMyTask()
-    getMyTaskJoin()
-}, 10 * 1000);
-onBeforeUnmount(() => {
-    clearInterval(timer)
-})
+
+
 onMounted(() => {
     getMyTask()
     getMyTaskJoin()
+    if (!localStorage.getItem('showMore')) {
+        localStorage.setItem('showMore', 'false')
+    }
+    showMore.value = localStorage.getItem('showMore')
 
 })
 
@@ -705,11 +765,26 @@ onMounted(() => {
 
 }
 
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity .5s;
+    /* 过渡效果的样式和持续时间 */
+}
+
+.fade-enter,
+.fade-leave-to
+
+/* 进入和离开的样式 */
+    {
+    opacity: 0;
+}
+
+/* 初始状态为透明 */
 .el-tabs::v-deep .el-tabs__item.is-active {
     color: rgb(22, 119, 255);
     font-weight: bold;
     border-bottom: 1px solid #1677ff;
-    transition: all .2s linear;
+    transition: all .5s linear;
 
 }
 

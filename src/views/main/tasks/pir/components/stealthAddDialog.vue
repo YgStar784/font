@@ -1,6 +1,6 @@
 <template>
 
-    <el-dialog class="dialog" :model-value="dialogVisible" @close="handleClose">
+    <el-dialog class="pir-add-dialog" width="600" :model-value="dialogVisible" @close="handleClose">
         <el-card>
             <template #header>
                 <div class="card-header">
@@ -11,7 +11,7 @@
                     </span>
                 </div>
             </template>
-            <el-form :model="form" ref="formRef" title="数据源导入" label-position="left" label-width="auto"
+            <el-form :model="form" ref="formRef" :rules="rules" title="数据源导入" label-position="right" label-width="110px"
                 style="max-width: 700px">
                 <el-form-item label="任务名称:" prop="taskName">
                     <el-input placeholder="请输入任务名称" v-model="form.taskName" />
@@ -22,7 +22,7 @@
                 <!--                 <el-form-item label="匿踪查询名称:" prop="task_name">
                     <el-input placeholder="请输入匿踪查询名称" v-model="form.task_name" />
                 </el-form-item> -->
-                <el-form-item label="节点名称" prop="query_id">
+                <el-form-item label="节点名称:" prop="serverAddress">
                     <el-select v-model="form.serverAddress" placeholder="请选择节点名称" @click="getNodeInfo"
                         @change="handleUserSelectChange">
                         <el-option v-for="item in node_options" :key="item.id"
@@ -37,7 +37,7 @@
                         </div>
                     </el-select>
                 </el-form-item>
-                <el-form-item label="需求数据描述:" prop="taskDescription">
+                <el-form-item label="需求数据描述:" prop="requireDataDescription">
                     <el-input placeholder="需求数据描述" v-model="form.requireDataDescription" />
                 </el-form-item>
                 <!--    <el-form-item label="节点端口:" prop="ip_port">
@@ -80,6 +80,7 @@
                     </el-checkbox-group> </el-form-item> -->
                 <el-form-item class="subButton" style="float:right">
 
+                    <el-button type="defeault" @click="handleClose">返回</el-button>
 
                     <el-button type="primary" @click="onSubmit">发起</el-button>
                 </el-form-item>
@@ -96,6 +97,7 @@ import SomeTools from '@/utils/someTools'
 import { ElMessage, ElMessageBox } from 'element-plus'
 const id = ref(0)
 const formRef = ref()
+const router = useRouter()
 const dataSourceName = ref('')
 const query_ip = ref('')
 const node_options = ref([])
@@ -159,7 +161,11 @@ const sendForm = ref({
 const handleClose = () => {
     emits('update:modelValue', false)
 }
-
+// 表单校验规则
+const rules = ref({
+    taskName: [{ required: true, message: "任务名称不能为空", trigger: "blur" }],
+    serverAddress: [{ required: true, message: "请选择节点名称", trigger: "change" }],
+});
 const getNodeInfo = async () => {
     axios.post('/api/getAllUserPublic', queryFormUser.value
         , {
@@ -172,6 +178,14 @@ const getNodeInfo = async () => {
                 node_options.value = res.data.data.userList
                 // console.log(currentUsersList.value);
                 total.value = res.data.data.total
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                handleClose()
+
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.message
@@ -248,82 +262,95 @@ const copy_arr = () => {
 
 
 const onSubmit = async () => {
-    sendForm.value.taskName = form.value.taskName
-    sendForm.value.taskUuid = SomeTools.guid()
-    sendForm.value.createTime = nowDate(time)
-    sendForm.value.taskDescription = form.value.taskDescription
-    taskParams.value.queryFields = []
-    find_userInfo()
-    find_dataSourceInfo()
-    taskParams.value.serverAddress = query_ip.value
-    /*  if (taskParams.value.serverAddress === '') {
-         ElMessage({
-             type: 'warning',
-             message: 'ip或port不能为空'
-         })
-         return
-     } */
-    taskParams.value.task_name = form.value.taskName
-    /*     if (taskParams.value.task_name === '') {
-            ElMessage({
-                type: 'warning',
-                message: '任务名不能为空'
-            })
-            return
-        } */
-    const ID = localStorage.getItem('id')
-    taskParams.value.nodeUuid = Number(ID)
-    taskParams.value.task_id = sendForm.value.taskUuid
-    taskParams.value.degree = Number(form.value.degree)
+    formRef.value.validate((valid) => {
+        if (valid) {
+            sendForm.value.taskName = form.value.taskName
+            sendForm.value.taskUuid = SomeTools.guid()
+            sendForm.value.createTime = nowDate(time)
+            sendForm.value.taskDescription = form.value.taskDescription
+            taskParams.value.queryFields = []
+            find_userInfo()
+            find_dataSourceInfo()
+            taskParams.value.serverAddress = query_ip.value
+            /*  if (taskParams.value.serverAddress === '') {
+                 ElMessage({
+                     type: 'warning',
+                     message: 'ip或port不能为空'
+                 })
+                 return
+             } */
+            taskParams.value.task_name = form.value.taskName
+            /*     if (taskParams.value.task_name === '') {
+                    ElMessage({
+                        type: 'warning',
+                        message: '任务名不能为空'
+                    })
+                    return
+                } */
+            const ID = localStorage.getItem('id')
+            taskParams.value.nodeUuid = Number(ID)
+            taskParams.value.task_id = sendForm.value.taskUuid
+            taskParams.value.degree = Number(form.value.degree)
 
-    taskParams.value.keyField = form.value.keyField
-    taskParams.value.keyWord = form.value.keyWord
-    taskParams.value.dataSourceUuid = form.value.dataSourceUuid
-    console.log(form.value.serverAddress)
-    console.log(checkboxGroup.value)
-    copy_arr()
-    taskParams.value.queryFields = form.value.queryFields
-    /*     if (taskParams.value.queryFields.length === 0) {
-            ElMessage({
-                type: 'warning',
-                message: '请至少选择一个要查询的字段'
-            })
-            return
-        } */
-    console.log(taskParams.value)
-    //sendForm.value.taskParams = taskParams.value
-    console.log(sendForm.value)
-    sendForm.value.taskParams.taskId = sendForm.value.taskUuid
-    sendForm.value.taskParams.taskName = form.value.taskName
-    sendForm.value.taskParams.nodeUuid = taskParams.value.nodeUuid
-    sendForm.value.taskParams.serverAddress = form.value.serverAddress
-    axios.post(
-        '/api/PIR/createTask', sendForm.value
-        , {
-            headers: {
-                Authorization: localStorage.getItem('token'),
+            taskParams.value.keyField = form.value.keyField
+            taskParams.value.keyWord = form.value.keyWord
+            taskParams.value.dataSourceUuid = form.value.dataSourceUuid
+            console.log(form.value.serverAddress)
+            console.log(checkboxGroup.value)
+            copy_arr()
+            taskParams.value.queryFields = form.value.queryFields
+            /*     if (taskParams.value.queryFields.length === 0) {
+                    ElMessage({
+                        type: 'warning',
+                        message: '请至少选择一个要查询的字段'
+                    })
+                    return
+                } */
+            console.log(taskParams.value)
+            //sendForm.value.taskParams = taskParams.value
+            console.log(sendForm.value)
+            sendForm.value.taskParams.taskId = sendForm.value.taskUuid
+            sendForm.value.taskParams.taskName = form.value.taskName
+            sendForm.value.taskParams.nodeUuid = taskParams.value.nodeUuid
+            sendForm.value.taskParams.serverAddress = form.value.serverAddress
+            axios.post(
+                '/api/PIR/createTask', sendForm.value
+                , {
+                    headers: {
+                        Authorization: localStorage.getItem('token'),
 
-            }
-        }).then(res => {
-            console.log(res)
-            if (res.data.code === 1000) {
-                ElMessage({
-                    type: 'success',
-                    message: '添加成功'
+                    }
+                }).then(res => {
+                    console.log(res)
+                    if (res.data.code === 1000) {
+                        ElMessage({
+                            type: 'success',
+                            message: '添加成功'
+                        })
+                        formRef.value.resetFields()
+                        checkboxGroup.value = []
+                        emits('initTaskList')
+                        handleClose()
+
+                    } else if (res.data.code === 1006) {
+                        ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                        handleClose()
+
+                        setTimeout(() => {
+                            router.push({ path: '/login' }); // 确保路径和名称正确
+                        }, 500); // 避免动画加载导致页面阻塞
+                        return
+                    }
+                    else {
+                        ElMessage({
+                            type: 'warning',
+                            message: '查询失败'
+                        })
+                    }
                 })
-                formRef.value.resetFields()
-                checkboxGroup.value = []
-                emits('initTaskList')
-                handleClose()
+        }
+    });
 
-            }
-            else {
-                ElMessage({
-                    type: 'warning',
-                    message: '查询失败'
-                })
-            }
-        })
 
 }
 </script>
@@ -375,5 +402,20 @@ const onSubmit = async () => {
 
 .example-showcase .el-loading-mask {
     z-index: 9;
+}
+</style>
+
+<style lang="scss">
+.pir-add-dialog .el-dialog__header {
+    padding: 0;
+}
+
+.pir-add-dialog.el-dialog__header.show-close {
+    padding: 0;
+}
+
+.pir-add-dialog.el-dialog {
+    border-radius: 25px;
+    padding: 0;
 }
 </style>

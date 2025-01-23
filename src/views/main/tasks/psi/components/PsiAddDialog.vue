@@ -24,7 +24,7 @@
                         <el-input-number v-model="form.participants" controls-position="right" @change="handleNumChange"
                             :min="1" :max="10" label="描述文字"></el-input-number>
                     </el-form-item>
-                    <el-form-item :label='`PARTY-${index1} :`' v-for="(node, index1) in form.nodeList" prop="nodeinfo"
+                    <el-form-item :label='`PARTY-${index1} :`' v-for="(node, index1) in form.nodeList" prop="nodeList"
                         :key="index1">
                         <el-col :span="11">
                             <el-select v-model="node.nameAndAddr" :key="index1" placeholder="请选择节点名称"
@@ -97,7 +97,7 @@
                             </el-col>
                         </el-form-item>
                     </div> -->
-                    <el-form-item label="求交字段描述:"> <lay-tag-input v-model="form.psiFieldList"
+                    <el-form-item label="求交字段描述:" prop="psiFieldList"> <lay-tag-input v-model="form.psiFieldList"
                             v-model:inputValue="standfield" allow-clear :min="1" :minCollapsedNum="3" size="md"
                             placeholder="请输入" collapseTagsTooltip
                             :tagProps="{ color: '#409EFF', variant: 'light' }"></lay-tag-input>
@@ -110,6 +110,13 @@
                                 {{ node.nameAndAddr }}
                             </n-checkbox>
                         </n-space>
+                    </el-form-item>
+                    <el-form-item v-if="isResultTrue" prop="resultReturnArr" label="结果返回" style="padding-left: 20px;">
+                        <el-checkbox-group v-model="form.resultReturnArr">
+                            <el-checkbox v-for="type in resultReturns" :label="type" :value="type">
+                                {{ type }}
+                            </el-checkbox>
+                        </el-checkbox-group>
                     </el-form-item>
                     <el-form-item class="subButton" style="float:right">
                         <el-button type="info" round @click="handleClose">取 消</el-button>
@@ -132,16 +139,19 @@ import { rowContextKey } from 'element-plus';
 import { getPsiDataSourceAPI } from '@/apis/dataSource'
 import { getUserSourceAPI } from '@/apis/dataSource'
 import SomeTools from '@/utils/someTools'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { compileScript } from 'vue/compiler-sfc';
 import { ElMessage, ElMessageBox } from 'element-plus'
 import FloatLabel from 'primevue/floatlabel'
-
+import { useRouter } from 'vue-router';
 import axios from 'axios'
 import { log } from 'mathjs';
+const isResultTrue = ref(false)
 const id = ref(0)
 const usertotal = ref(0)
+const router = useRouter()
 const datasourcetotal = ref(0)
+const resultReturns = ref(['补齐', '不补齐'])
 //const node_options = ref([])
 const dataSourceName = ref('')
 //const dataSource_options = ref([])
@@ -149,13 +159,15 @@ const dataSourceName = ref('')
 const indexColumn = ref(0)
 var getTime = new Date().getTime(); //获取到当前时间戳
 var time = new Date(getTime); //创建一个日期对象
-const emits = defineEmits(['update:modelValue', 'initTaskList'])
+const emits = defineEmits(['update:modelValue', 'initTaskList', 'initMyJoinList'])
 const standfield = ref('')
 const queryFormUser = ref({
     queryName: '',
     page: 1,
     pageSize: 5
 })
+const resultReturnArr = ref([])
+const formRef = ref(null)
 const UserList = ref([])
 const queryFormDataSource = ref({
     queryName: '',
@@ -176,6 +188,8 @@ const form = ref({
     taskName: '',
     participants: 1,
     psiFieldList: [],
+    isOutputCompleted: 0,
+    resultReturnArr: [],
     nodeList: [{
         nameAndAddr: '',
         isReceiveResult: false,
@@ -196,24 +210,51 @@ const form = ref({
     standPsiField: []
 })
 const party = form.value.participants
+
 const rules = ref({
     taskName: [
-        {
-            required: true,
-            message: '请输入任务名称',
-            trigger: 'blur',
-        }
+        { required: true, message: '任务名称不能为空', trigger: 'blur' },
     ],
+    taskDescription: [], // 任务描述可以为空，不需要校验规则
     participants: [
+        { required: true, message: '数据参与方人数不能为空', trigger: 'blur' },
+        { type: 'number', min: 1, max: 10, message: '参与方人数应在 1 到 10 之间', trigger: 'blur' },
+    ],
+    nodeList: [
         {
             required: true,
-            message: '请输入参与人数',
+            validator: (rule, value, callback) => {
+                if (value.length === 0) {
+                    callback(new Error('节点列表不能为空，请至少添加一个参与方'));
+                } else {
+                    for (let i = 0; i < value.length; i++) {
+                        if (!value[i].nameAndAddr) {
+                            callback(new Error(`请选择节点信息`));
+                            return;
+                        }
+                        // 数据描述允许为空，不进行校验
+                    }
+                    callback();
+                }
+            },
             trigger: 'blur',
-        }
+        },
     ],
+    psiFieldList: [
+        {
+            required: true,
+            validator: (rule, value, callback) => {
+                if (value.length === 0) {
+                    callback(new Error('求交字段描述不能为空，请至少输入一个字段'));
+                } else {
+                    callback();
+                }
+            },
+            trigger: 'blur',
+        },
+    ],
+});
 
-
-})
 const type_options = [
     {
         value: "int",
@@ -291,6 +332,14 @@ const getNodeInfo = async (index) => {
                 UserList.value = res.data.data.userList
                 console.log(index, form.value.nodeList[index].node_options)
                 usertotal.value = res.data.data.total
+            } else if (res.data.code === 1006) {
+                ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                handleClose()
+
+                setTimeout(() => {
+                    router.push({ path: '/login' }); // 确保路径和名称正确
+                }, 500); // 避免动画加载导致页面阻塞
+                return
             }
             else {
                 const msg = res.message
@@ -482,80 +531,103 @@ const handleClose = () => {
 }
 
 const onsubmit = async () => {
-    console.log(form.value)
-    //const flag = isRepeat()
-    //console.log(flag)
-    /*    if (flag === false) {
-           ElMessage({
-               type: 'warning', message: '引用的数据源重复'
-           })
-           return
-       } */
-    taskParams.value.taskId = SomeTools.guid()
-    taskParams.value.taskName = form.value.taskName
-    taskParams.value.participants = form.value.participants
-    taskParams.value.psiFieldList = form.value.psiFieldList
-    //handleAddress()
-    copyForm()
-    //standFieldsCopy()
-    const sendForm = ref({
-        taskName: taskParams.value.taskName,
-        taskUuid: taskParams.value.taskId,
-        createTime: nowDate(time),
-        taskDescription: form.value.taskDescription,
-        taskParams: taskParams.value,
-    })
+    try {
+        // 调用 `validate` 进行表单验证
+        formRef.value.validate(async (valid) => {
+            if (valid) {
+                // 设置任务参数
+                taskParams.value.taskId = SomeTools.guid();
+                taskParams.value.taskName = form.value.taskName;
+                taskParams.value.participants = form.value.participants;
+                taskParams.value.psiFieldList = form.value.psiFieldList;
+                if (form.value.resultReturnArr.length === 2) {
+                    taskParams.value.isOutputCompleted = 2
+                } else if (form.value.resultReturnArr[0] === '补齐') {
+                    taskParams.value.isOutputCompleted = 1
 
-    console.log('sendForm.value', sendForm.value)
-    await axios.post(
-        '/api/PSI/createTask', sendForm.value
-        , {
-            headers: {
-                Authorization: localStorage.getItem('token'),
+                } else {
+                    taskParams.value.isOutputCompleted = 0
 
-            }
-        }).then(res => {
-            console.log(res)
-            if (res.data.code === 1000) {
-                ElMessage({
-                    type: 'success',
-                    message: '添加成功'
-                })
-                form.value = {
-                    query_id: null,
-                    taskName: '',
-                    participants: 1,
-                    nodeList: [{
-                        nameAndAddr: '',
-                        isReceiveResult: false,
-                        nodeAddress: '',
-                        nodeUUid: null,
-                        nodeName: '',
-                        party: 0,
-                        dataSourceUuid: '',
-                        dataSourceFields: [],
-                        node_options: [],
-                        dataSource_options: [],
-                        column_options: [],
-                        dataSourceInfo: null,
-                        columnCh: [],
-                        checkedList: [],
-                        requireDataDescription: '',
-                    }],
-                    standPsiField: []
                 }
-                emits('initTaskList')
-                handleClose()
+                console.log('taskParams.value.isOutputCompleted', taskParams.value.isOutputCompleted);
+                copyForm(); // 复制表单
+                const sendForm = ref({
+                    taskName: taskParams.value.taskName,
+                    taskUuid: taskParams.value.taskId,
+                    createTime: nowDate(time),
+                    taskDescription: form.value.taskDescription || '', // 允许为空
+                    taskParams: taskParams.value,
+                });
 
+                console.log('sendForm.value', sendForm.value);
+
+                // 提交请求
+                const res = await axios.post('/api/PSI/createTask', sendForm.value, {
+                    headers: {
+                        Authorization: localStorage.getItem('token'),
+                    },
+                });
+
+                // 处理返回结果
+                if (res.data.code === 1000) {
+                    ElMessage.success('添加成功');
+                    form.value = {
+                        query_id: null,
+                        taskName: '',
+                        participants: 1,
+                        nodeList: [
+                            {
+                                nameAndAddr: '',
+                                isReceiveResult: false,
+                                nodeAddress: '',
+                                nodeUUid: null,
+                                nodeName: '',
+                                party: 0,
+                                dataSourceUuid: '',
+                                dataSourceFields: [],
+                                node_options: [],
+                                dataSource_options: [],
+                                column_options: [],
+                                dataSourceInfo: null,
+                                columnCh: [],
+                                checkedList: [],
+                                requireDataDescription: '',
+                            },
+                        ],
+                        standPsiField: [],
+                    };
+                    emits('initTaskList');
+                    emits('initMyJoinList') // 发出刷新任务列表事件
+                    handleClose(); // 关闭弹窗
+                } else if (res.data.code === 1006) {
+                    ElMessage({ type: 'warning', message: 'Token过期，请重新登录' })
+                    handleClose()
+
+                    setTimeout(() => {
+                        router.push({ path: '/login' }); // 确保路径和名称正确
+                    }, 500); // 避免动画加载导致页面阻塞
+                    return
+                }
+                else {
+                    ElMessage.warning('繁忙，请重试！');
+                }
             }
-            else {
-                ElMessage({
-                    type: 'warning',
-                    message: '查询失败'
-                })
-            }
-        })
-}
+        });
+    } catch (error) {
+        console.error('请求发送失败', error);
+        ElMessage.error('请求发送失败，请检查网络或重试');
+    }
+};
+watch(
+    form.value.nodeList,
+    (newList) => {
+        // 判断列表中是否存在 isReceiveResult 为 true 的元素
+        const hasTrue = newList.some((node) => node.isReceiveResult === true);
+        console.log('sResultTrue.value');
+        isResultTrue.value = hasTrue;
+    },
+    { deep: true } // 深度监听对象内部的变化
+);
 </script>
 
 

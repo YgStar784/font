@@ -48,11 +48,11 @@ onMounted(() => getMenu()) */
                         <List />
                     </el-icon>
                     用户列表</el-menu-item>
-                <el-menu-item index="/taskinfo">
+                <!--                 <el-menu-item index="/taskinfo">
                     <el-icon>
                         <Ticket />
                     </el-icon>
-                    任务信息</el-menu-item>
+                    任务信息</el-menu-item> -->
             </el-sub-menu>
             <!--  -->
             <!--                 <el-menu-item index="/datasourceupload">

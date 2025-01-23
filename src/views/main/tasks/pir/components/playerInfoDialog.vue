@@ -3,14 +3,20 @@
     <el-dialog class="dialog" :model-value="props.dialogVisiblePlayer" width="1000px" @close="handleClose"
         append-to-body>
         <el-card>
-            <el-descriptions title="基本信息">
-                <el-descriptions-item label="任务ID">{{ props.taskUuid }}</el-descriptions-item>
-                <el-descriptions-item label="任务名称">{{ props.taskName }}</el-descriptions-item>
-                <el-descriptions-item label="角色">任务发起方</el-descriptions-item>
-                <el-descriptions-item label="创建时间">{{ props.createTime }}</el-descriptions-item>
-                <el-descriptions-item label="任务描述">{{ props.taskDescription }}</el-descriptions-item>
+            <el-descriptions title="基本信息" :column="4">
+                <el-descriptions-item label="任务ID" :span="2">{{ props.taskUuid }}</el-descriptions-item>
+                <el-descriptions-item label="任务名称" :span="1">{{ props.taskName }}</el-descriptions-item>
+                <el-descriptions-item label="角色" :span="1">任务发起方</el-descriptions-item>
+                <el-descriptions-item label="创建时间" :span="2">{{ props.createTime }}</el-descriptions-item>
+                <el-descriptions-item label="任务描述" :span="2">{{ props.taskDescription }}</el-descriptions-item>
 
+                <el-descriptions-item v-if="props.taskInfoError" :span="4">
+                    <template #label>
+                        <span>失败原因</span>
+                    </template>
+                    <el-text class="mx-1" type="danger">{{ props.taskInfoError }}</el-text>
 
+                </el-descriptions-item>
 
             </el-descriptions>
         </el-card>
@@ -73,6 +79,10 @@ const props = defineProps({
         default: '',
         required: true
     },
+    taskInfoError: {
+        type: String,
+        default: ''
+    }
 })
 const emits = defineEmits(['update:modelValue'])
 
